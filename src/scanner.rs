@@ -57,6 +57,28 @@ impl Scanner {
             return Some(self.get_token(token_type, Literal::Nil));
         } 
 
+        // longer tokens
+        match c {
+            '/' => { 
+                if self.mat('/') {
+                    // a comment goes until the end of the line
+                    while self.peak() != '\n' && !self.is_end() {
+                        self.consume();
+                    }
+                } else {
+                    return Some(self.get_token(TokenType::Slash, Literal::Nil));
+                }
+            }
+            ' ' | '\r' | '\t' => {
+                return None
+            }
+            '\n' => {
+                self.line += 1;
+                return None
+            }
+            _ => {}
+        };
+
         return None;
     }
 
