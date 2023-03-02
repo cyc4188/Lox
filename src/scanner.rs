@@ -7,6 +7,7 @@ pub struct Scanner {
     current: usize, // current position in source code
     line: usize,    // current line
     pub tokens: Vec<Token>,
+    pub had_error: bool,
 }
 
 impl Scanner {
@@ -17,6 +18,7 @@ impl Scanner {
             current: 0,
             line: 1,
             tokens: Vec::new(),
+            had_error: false,
         }
     }
 
@@ -25,8 +27,12 @@ impl Scanner {
         // loop until we reach the end of the source code
         while !self.is_end() {
             self.start = self.current;
-            let token = self.scan_token().unwrap();
-            self.tokens.push(token);
+            if let Some(token) = self.scan_token() {
+                self.tokens.push(token);
+            }
+            else {
+                self.had_error = true;
+            }
         } 
     }
 

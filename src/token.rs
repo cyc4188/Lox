@@ -29,11 +29,6 @@ impl Token {
             '+' => Some(TokenType::Plus),
             ';' => Some(TokenType::Semicolon),
             '*' => Some(TokenType::Star),
-            '!' => Some(TokenType::Bang),
-            '=' => Some(TokenType::Equal),
-            '<' => Some(TokenType::Less),
-            '>' => Some(TokenType::Greater),
-            '/' => Some(TokenType::Slash),
             _ => None,
         }
     }
