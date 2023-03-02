@@ -22,28 +22,23 @@ impl Scanner {
         }
     }
 
-    /// return a vector of tokens
     pub fn scan_tokens(&mut self) {
         // loop until we reach the end of the source code
         while !self.is_end() {
             self.start = self.current;
-            if let Some(token) = self.scan_token() {
-                self.tokens.push(token);
-            }
-            else {
-                self.had_error = true;
-            }
+            self.scan_token();
         } 
     }
 
 
     /// return a token, this is where the magic happens
-    pub fn scan_token(&mut self) -> Option<Token> {
+    pub fn scan_token(&mut self)  {
         let c = self.consume();
 
         // check if the character is a single character token
         if let Some(token_type) = Token::check_single_character_token(c) {
-            return Some( self.get_token(token_type, Literal::Nil));
+            self.add_token(token_type, Literal::Nil);
+            return;
         }
 
         // deal with operators
@@ -54,10 +49,12 @@ impl Scanner {
                 }
                 _ => {}
             }
-            return Some(self.get_token(token_type, Literal::Nil));
+            self.add_token(token_type, Literal::Nil);
+            return;
         } 
 
         // longer tokens
+        // /, //, \r, \t, ' ', \n
         match c {
             '/' => { 
                 if self.mat('/') {
@@ -66,26 +63,34 @@ impl Scanner {
                         self.consume();
                     }
                 } else {
-                    return Some(self.get_token(TokenType::Slash, Literal::Nil));
+                    self.add_token(TokenType::Slash, Literal::Nil);
+                    return;
                 }
             }
             ' ' | '\r' | '\t' => {
-                return None
+                return;
             }
             '\n' => {
                 self.line += 1;
-                return None
+                return;
             }
             _ => {}
         };
 
-        return None;
+        // TODO
+        // error handler
+        
+        return;
     }
 
     /// return a token, according to token_type and literal
     pub fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
         log::debug!("{}", &self.source[self.start..self.current]);
         Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
+    }
+
+    pub fn add_token(&mut self, token_type: TokenType, literal: Literal) {
+        self.tokens.push(self.get_token(token_type, literal));
     }
     
     /// return true if we have reached the end of the source code
