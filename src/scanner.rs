@@ -81,6 +81,9 @@ impl Scanner {
             '0'..='9' => { // Number
                 self.check_number();
             }
+            'a'..='z' | 'A'..='Z' | '_' => { // Identifier or Keyword
+                self.check_identifier();
+            }
             _ => {
                 self.error(self.line, "Unexpected character.");
             }
@@ -184,6 +187,24 @@ impl Scanner {
         self.add_token(TokenType::Number, Literal::Number(value.parse().unwrap()));
     }
 
+    pub fn check_identifier(&mut self) {
+        while is_alpha_numeric(self.peak()) {
+            self.consume();
+        }
+
+        let text = &self.source[self.start..self.current];
+        // let token_type = Token::check_keyword(text).unwrap_or(TokenType::Identifier);
+        if let Some(token_type) = Token::check_keyword(text) {
+            // keyword
+            self.add_token(token_type, Literal::Nil);
+        }
+        else {
+            //identifier
+            self.add_token(TokenType::Identifier, Literal::Identifier(text.to_string()));
+        }
+    }
+
+
     pub fn error(&mut self, line: usize, message: &str) {
         self.errors.push(Error::new(line, message));
         self.had_error = true;
@@ -234,6 +255,22 @@ mod tests {
     #[test]
     fn test_number() {
         let mut scanner = Scanner::new("123 123.456");
+        scanner.scan_tokens();
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
+    }
+    #[test]
+    fn test_keyword() {
+        let mut scanner = Scanner::new("and class else false fun for if nil or print return super this true var while");
+        scanner.scan_tokens();
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
+    }
+    #[test]
+    fn test_identifier() {
+        let mut scanner = Scanner::new("a+b");
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
