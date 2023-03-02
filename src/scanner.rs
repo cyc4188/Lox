@@ -1,4 +1,4 @@
-use crate::token::*;
+use super::*;
 
 #[derive(Debug)]
 pub struct Scanner {
@@ -8,6 +8,7 @@ pub struct Scanner {
     line: usize,    // current line
     pub tokens: Vec<Token>,
     pub had_error: bool,
+    pub errors: Vec<Error>,
 }
 
 impl Scanner {
@@ -19,6 +20,7 @@ impl Scanner {
             line: 1,
             tokens: Vec::new(),
             had_error: false,
+            errors: Vec::new(),
         }
     }
 
@@ -55,6 +57,7 @@ impl Scanner {
 
         // longer tokens
         // /, //, \r, \t, ' ', \n
+        // 'string'
         match c {
             '/' => { 
                 if self.mat('/') {
@@ -64,7 +67,6 @@ impl Scanner {
                     }
                 } else {
                     self.add_token(TokenType::Slash, Literal::Nil);
-                    return;
                 }
             }
             ' ' | '\r' | '\t' => {
@@ -72,15 +74,18 @@ impl Scanner {
             }
             '\n' => {
                 self.line += 1;
-                return;
             }
-            _ => {}
+            '"' => { // String
+                self.check_string();
+            }
+            '0'..='9' => { // Number
+                self.check_number();
+            }
+            _ => {
+                self.error(self.line, "Unexpected character.");
+            }
         };
 
-        // TODO
-        // error handler
-        
-        return;
     }
 
     /// return a token, according to token_type and literal
@@ -89,6 +94,7 @@ impl Scanner {
         Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
     }
 
+    /// add a token to the tokens vector
     pub fn add_token(&mut self, token_type: TokenType, literal: Literal) {
         self.tokens.push(self.get_token(token_type, literal));
     }
@@ -98,7 +104,7 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    /// return the next character without advancing the current position
+    /// return the current character without advancing the current position
     pub fn peak(&self) -> char {
         if self.is_end() {
             '\0'
@@ -106,8 +112,17 @@ impl Scanner {
             self.source.chars().nth(self.current).unwrap()
         }
     }
+
+    /// return the next next character without advancing the current position
+    pub fn peak_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            '\0'
+        } else {
+            self.source.chars().nth(self.current + 1).unwrap()
+        }
+    }
     
-    /// return the next character and advance the current position
+    /// return the current character and advance the current position
     pub fn consume(&mut self) -> char {
         let c = self.peak();
         self.current += 1;
@@ -128,6 +143,52 @@ impl Scanner {
         self.current += 1;
         true
     }
+
+    pub fn check_string(&mut self) {
+        while self.peak() != '"' && !self.is_end() {
+            if self.peak() == '\n' {
+                self.line += 1;
+            }
+            self.consume();
+        }
+
+        if self.is_end() {
+            self.error(self.line, "Unterminated string.");
+            return;
+        }
+
+        // the closing "
+        self.consume();
+
+        // trim the surrounding quotes
+        let value = &self.source[self.start + 1..self.current - 1];
+        self.add_token(TokenType::String, Literal::String(value.to_string()));
+    }
+
+    pub fn check_number(&mut self) {
+        while is_digit(self.peak()) {
+            self.consume();
+        }
+
+        // look for a fractional part
+        if self.peak() == '.' && is_digit(self.peak_next()){
+            // consume the "."
+            self.consume();
+
+            while is_digit(self.peak()) {
+                self.consume();
+            }
+        }
+
+        let value = &self.source[self.start..self.current];
+        self.add_token(TokenType::Number, Literal::Number(value.parse().unwrap()));
+    }
+
+    pub fn error(&mut self, line: usize, message: &str) {
+        self.errors.push(Error::new(line, message));
+        self.had_error = true;
+    }
+
 }
 
 #[cfg(test)]
@@ -139,14 +200,44 @@ mod tests {
         let mut scanner = Scanner::new("(){},.");
         scanner.scan_tokens();
         assert_eq!(scanner.tokens.len(), 6);
-
     }
+
     #[test]
     fn test_scan_operator() {
         let mut scanner = Scanner::new("== != > >= < <=");
         scanner.scan_tokens();
         assert_eq!(scanner.tokens.len(), 6);
-        println!("{:?}", scanner.tokens);
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
+    }
+
+    #[test]
+    fn test_longer_tokens() {
+        let mut scanner = Scanner::new("// this is a comment
+(( )){} // grouping stuff
+!*+-/=<> <= == // operators");
+        scanner.scan_tokens();
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
+    }
+
+    #[test]
+    fn test_string() {
+        let mut scanner = Scanner::new("\"this is a string\"");
+        scanner.scan_tokens();
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
+    }
+    #[test]
+    fn test_number() {
+        let mut scanner = Scanner::new("123 123.456");
+        scanner.scan_tokens();
+        for token in scanner.tokens.iter() {
+            println!("{:?}", token);
+        } 
     }
 }
 
