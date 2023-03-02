@@ -1,80 +1,83 @@
-use std::fmt::Display;
+use crate::token::*;
 
 #[derive(Debug)]
 pub struct Scanner {
-    source: String,
-
+    source: String, // source code
+    start: usize,   // start of current token
+    current: usize, // current position in source code
+    line: usize,    // current line
+    pub tokens: Vec<Token>,
 }
 
 impl Scanner {
     pub fn new(source: &str) -> Self {
         Self {
-            source: source.to_string()
+            source: source.to_string(),
+            start: 0,
+            current: 0,
+            line: 1,
+            tokens: Vec::new(),
         }
     }
 
-    pub fn scan_tokens(&self) -> Vec<Token> {
-        self.source.split_whitespace().map(|c| Token::new(
-                &c.to_string(),
-                TokenType::Identifier, 
-                Literal::Nil,
-                0
-                ))
-            .collect() 
+    /// return a vector of tokens
+    pub fn scan_tokens(&mut self) {
+        // loop until we reach the end of the source code
+        while !self.is_end() {
+            self.start = self.current;
+            let token = self.scan_token().unwrap();
+            self.tokens.push(token);
+        } 
     }
-}
 
-pub struct Token {
-    lexeme: String,
-    token_type: TokenType,
-    literal: Literal,
-    line: usize, 
-}
 
-impl Token {
-    pub fn new(lexeme: &str, token_type: TokenType, literal : Literal, line: usize) -> Self {
-        Self {
-            lexeme: lexeme.to_string(),
-            token_type,
-            literal,
-            line,
+    /// return a token, this is where the magic happens
+    pub fn scan_token(&mut self) -> Option<Token> {
+        let c = self.consume();
+
+        // check if the character is a single character token
+        if let Some(token_type) = Token::is_single_char_token(c) {
+            return Some( self.get_token(token_type, Literal::Nil));
+        }
+        return None;
+    }
+
+    pub fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
+        log::debug!("{}", &self.source[self.start..self.current]);
+        Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
+    }
+    
+    /// return true if we have reached the end of the source code
+    pub fn is_end(&self) -> bool {
+        self.current >= self.source.len()
+    }
+
+    /// return the next character without advancing the current position
+    pub fn peak(&self) -> char {
+        if self.is_end() {
+            '\0'
+        } else {
+            self.source.chars().nth(self.current).unwrap()
         }
     }
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} {} ", self.token_type, self.lexeme, self.literal)
+    
+    /// return the next character and advance the current position
+    pub fn consume(&mut self) -> char {
+        let c = self.peak();
+        self.current += 1;
+        c
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[derive(Display)]
-pub enum TokenType {
-    // Single-character tokens.
-    LeftParen, RightParen, LeftBrace, RightBrace,
-    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
-
-    // One or two character tokens.
-    Bang, BangEqual,
-    Equal, EqualEqual,
-    Greater, GreaterEqual,
-    Less, LessEqual,
-
-    // Literals.
-    Identifier, String, Number,
-
-    // Keywords.
-    And, Class, Else, False, Fun, For, If, Nil, Or,
-    Print, Return, Super, This, True, Var, While,
-
-    Eof,
+    #[test]
+    fn test_scan_tokens() {
+        let mut scanner = Scanner::new("(){},.");
+        scanner.scan_tokens();
+        assert_eq!(scanner.tokens.len(), 6);
+    }
 }
 
-#[derive(Display)]
-pub enum Literal {
-    String(String),
-    Number(f64),
-    Boolean(bool),
-    Nil,
-}

@@ -1,0 +1,77 @@
+use std::fmt::Display;
+
+#[derive(Debug)]
+pub struct Token {
+    lexeme: String,
+    token_type: TokenType,
+    literal: Literal,
+    line: usize,
+}
+
+impl Token {
+    pub fn new(lexeme: &str, token_type: TokenType, literal: Literal, line: usize) -> Self {
+        Self {
+            lexeme: lexeme.to_string(),
+            token_type,
+            literal,
+            line,
+        }
+    }
+    pub fn is_single_char_token(ch: char) -> Option<TokenType> {
+        match ch {
+            '(' => Some(TokenType::LeftParen),
+            ')' => Some(TokenType::RightParen),
+            '{' => Some(TokenType::LeftBrace),
+            '}' => Some(TokenType::RightBrace),
+            ',' => Some(TokenType::Comma),
+            '.' => Some(TokenType::Dot),
+            '-' => Some(TokenType::Minus),
+            '+' => Some(TokenType::Plus),
+            ';' => Some(TokenType::Semicolon),
+            '*' => Some(TokenType::Star),
+            '!' => Some(TokenType::Bang),
+            '=' => Some(TokenType::Equal),
+            '<' => Some(TokenType::Less),
+            '>' => Some(TokenType::Greater),
+            '/' => Some(TokenType::Slash),
+            _ => None,
+        }
+    }
+}
+
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {} ", self.token_type, self.lexeme, self.literal)
+    }
+}
+
+#[derive(Display, Debug)]
+pub enum TokenType {
+    // Single-character tokens.
+    LeftParen, RightParen, LeftBrace, RightBrace,
+    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
+
+    // One or two character tokens.
+    Bang, BangEqual, Equal, EqualEqual,
+    Greater, GreaterEqual, Less, LessEqual,
+
+    // Literals.
+    Identifier, String, Number,
+
+    // Keywords.
+    And, Class, Else, False, Fun,
+    For, If, Nil, Or, Print, Return,
+    Super, This, True, Var, While,
+
+    Eof,
+}
+
+#[derive(Display, Debug)]
+pub enum Literal {
+    String(String),
+    Identifier(String),
+    Number(f64),
+    Boolean(bool),
+    Nil,
+}

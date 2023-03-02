@@ -15,8 +15,9 @@ impl Loxer {
     /// Execute the source code
     pub fn run (&self, source: &str) {
         info!("Running source code: {}", source);
-        let scanner = Scanner::new(source);
-        let tokens = scanner.scan_tokens();
+        let mut scanner = Scanner::new(source);
+        scanner.scan_tokens();
+        let tokens = &scanner.tokens;
         for token in tokens {
             println!("{}", token);
         }
