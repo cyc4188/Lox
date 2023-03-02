@@ -42,12 +42,25 @@ impl Scanner {
         let c = self.consume();
 
         // check if the character is a single character token
-        if let Some(token_type) = Token::is_single_char_token(c) {
+        if let Some(token_type) = Token::check_single_character_token(c) {
             return Some( self.get_token(token_type, Literal::Nil));
         }
+
+        // deal with operators
+        if let Some(token_type) = Token::check_operator(c, self.peak()) {
+            match token_type {
+                TokenType::BangEqual | TokenType::EqualEqual | TokenType::GreaterEqual | TokenType::LessEqual => {
+                    self.consume();
+                }
+                _ => {}
+            }
+            return Some(self.get_token(token_type, Literal::Nil));
+        } 
+
         return None;
     }
 
+    /// return a token, according to token_type and literal
     pub fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
         log::debug!("{}", &self.source[self.start..self.current]);
         Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
@@ -73,6 +86,21 @@ impl Scanner {
         self.current += 1;
         c
     }
+
+
+    /// return true if the next character is expected
+    /// if true, advance the current position
+    /// if false, do nothing
+    pub fn mat(&mut self, expected: char) -> bool {
+        if self.is_end() {
+            return false;
+        }
+        if self.source.chars().nth(self.current).unwrap() != expected {
+            return false;
+        }
+        self.current += 1;
+        true
+    }
 }
 
 #[cfg(test)]
@@ -80,10 +108,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_scan_tokens() {
+    fn test_scan_single_character_token() {
         let mut scanner = Scanner::new("(){},.");
         scanner.scan_tokens();
         assert_eq!(scanner.tokens.len(), 6);
+
+    }
+    #[test]
+    fn test_scan_operator() {
+        let mut scanner = Scanner::new("== != > >= < <=");
+        scanner.scan_tokens();
+        assert_eq!(scanner.tokens.len(), 6);
+        println!("{:?}", scanner.tokens);
     }
 }
 

@@ -17,7 +17,7 @@ impl Token {
             line,
         }
     }
-    pub fn is_single_char_token(ch: char) -> Option<TokenType> {
+    pub fn check_single_character_token(ch: char) -> Option<TokenType> {
         match ch {
             '(' => Some(TokenType::LeftParen),
             ')' => Some(TokenType::RightParen),
@@ -29,6 +29,19 @@ impl Token {
             '+' => Some(TokenType::Plus),
             ';' => Some(TokenType::Semicolon),
             '*' => Some(TokenType::Star),
+            _ => None,
+        }
+    }
+    pub fn check_operator(ch: char, next_ch: char) -> Option<TokenType> {
+        match (ch, next_ch) {
+            ('!', '=') => Some(TokenType::BangEqual),
+            ('=', '=') => Some(TokenType::EqualEqual),
+            ('>', '=') => Some(TokenType::GreaterEqual),
+            ('<', '=') => Some(TokenType::LessEqual),
+            ('!', _) => Some(TokenType::Bang),
+            ('=', _) => Some(TokenType::Equal),
+            ('>', _) => Some(TokenType::Greater),
+            ('<', _) => Some(TokenType::Less),
             _ => None,
         }
     }
