@@ -18,8 +18,16 @@ impl Loxer {
         let mut scanner = Scanner::new(source);
         scanner.scan_tokens();
         let tokens = &scanner.tokens;
+
+        if scanner.had_error {
+            for error in &scanner.errors {
+                println!("[line {}] Error: {}", error.line, error.message);
+            }
+            return;
+        }
+        
         for token in tokens {
-            println!("{}", token);
+            println!("{:?}", token);
         }
     }
 

@@ -196,7 +196,13 @@ impl Scanner {
         // let token_type = Token::check_keyword(text).unwrap_or(TokenType::Identifier);
         if let Some(token_type) = Token::check_keyword(text) {
             // keyword
-            self.add_token(token_type, Literal::Nil);
+            let literal = match token_type {
+                TokenType::True => Literal::Boolean(true),
+                TokenType::False => Literal::Boolean(false),
+                TokenType::Nil => Literal::Nil,
+                _ => Literal::Nil,
+            };
+            self.add_token(token_type, literal);
         }
         else {
             //identifier
