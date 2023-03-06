@@ -34,7 +34,7 @@ impl Scanner {
 
 
     /// return a token, this is where the magic happens
-    pub fn scan_token(&mut self)  {
+    fn scan_token(&mut self)  {
         let c = self.consume();
 
         // check if the character is a single character token
@@ -92,23 +92,23 @@ impl Scanner {
     }
 
     /// return a token, according to token_type and literal
-    pub fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
+    fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
         log::debug!("{}", &self.source[self.start..self.current]);
         Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
     }
 
     /// add a token to the tokens vector
-    pub fn add_token(&mut self, token_type: TokenType, literal: Literal) {
+    fn add_token(&mut self, token_type: TokenType, literal: Literal) {
         self.tokens.push(self.get_token(token_type, literal));
     }
     
     /// return true if we have reached the end of the source code
-    pub fn is_end(&self) -> bool {
+    fn is_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
     /// return the current character without advancing the current position
-    pub fn peak(&self) -> char {
+    fn peak(&self) -> char {
         if self.is_end() {
             '\0'
         } else {
@@ -117,7 +117,7 @@ impl Scanner {
     }
 
     /// return the next next character without advancing the current position
-    pub fn peak_next(&self) -> char {
+    fn peak_next(&self) -> char {
         if self.current + 1 >= self.source.len() {
             '\0'
         } else {
@@ -126,7 +126,7 @@ impl Scanner {
     }
     
     /// return the current character and advance the current position
-    pub fn consume(&mut self) -> char {
+    fn consume(&mut self) -> char {
         let c = self.peak();
         self.current += 1;
         c
@@ -136,7 +136,7 @@ impl Scanner {
     /// return true if the next character is expected
     /// if true, advance the current position
     /// if false, do nothing
-    pub fn mat(&mut self, expected: char) -> bool {
+    fn mat(&mut self, expected: char) -> bool {
         if self.is_end() {
             return false;
         }
@@ -147,7 +147,7 @@ impl Scanner {
         true
     }
 
-    pub fn check_string(&mut self) {
+    fn check_string(&mut self) {
         while self.peak() != '"' && !self.is_end() {
             if self.peak() == '\n' {
                 self.line += 1;
@@ -168,7 +168,7 @@ impl Scanner {
         self.add_token(TokenType::String, Literal::String(value.to_string()));
     }
 
-    pub fn check_number(&mut self) {
+    fn check_number(&mut self) {
         while is_digit(self.peak()) {
             self.consume();
         }
@@ -187,7 +187,7 @@ impl Scanner {
         self.add_token(TokenType::Number, Literal::Number(value.parse().unwrap()));
     }
 
-    pub fn check_identifier(&mut self) {
+    fn check_identifier(&mut self) {
         while is_alpha_numeric(self.peak()) {
             self.consume();
         }
@@ -206,12 +206,12 @@ impl Scanner {
         }
         else {
             //identifier
-            self.add_token(TokenType::Identifier, Literal::Identifier(text.to_string()));
+            self.add_token(TokenType::Identifier, Literal::Nil);
         }
     }
 
 
-    pub fn error(&mut self, line: usize, message: &str) {
+    fn error(&mut self, line: usize, message: &str) {
         self.errors.push(Error::new(line, message));
         self.had_error = true;
     }

@@ -3,6 +3,7 @@ pub mod scanner;
 pub mod token;
 pub mod error;
 pub mod utils;
+pub mod expression;
 
 pub use loxer::Loxer;
 pub use token::{Literal, Token, TokenType};
