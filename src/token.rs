@@ -105,3 +105,14 @@ pub enum Literal {
     Boolean(bool),
     Nil,
 }
+
+#[cfg(test)] 
+pub mod test {
+    #[test]
+    fn test_literal() {
+        let literal = super::Literal::String("hello".to_string());
+        let num = super::Literal::Number(1.0);
+        println!("literal: {}", literal);
+        println!("num: {}", num)
+    }    
+}

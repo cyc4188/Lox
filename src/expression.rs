@@ -1,5 +1,6 @@
-use crate::Literal;
-use crate::{Token, TokenType};
+// use crate::Literal;
+// use crate::{Token, TokenType};
+use super::*;
 use std::fmt;
 
 ///expression     → literal
@@ -35,14 +36,14 @@ pub enum Expr {
 }
 
 pub trait Visitor<T> {
-    fn visit_literal_expr(&mut self, expr: &Expr) -> T;
-    fn visit_unary_expr(&mut self, expr: &Expr) -> T;
-    fn visit_binary_expr(&mut self, expr: &Expr) -> T;
-    fn visit_grouping_expr(&mut self, expr: &Expr) -> T;
+    fn visit_literal_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
 }
 
 impl Expr {
-    pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> T {
+    pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> Result<T, Error> {
         match self {
             Expr::Literal { value } => visitor.visit_literal_expr(self),
             Expr::Unary { operator, right } => visitor.visit_unary_expr(self),
@@ -59,6 +60,49 @@ impl fmt::Display for Expr {
             Expr::Unary { operator, right } => write!(f, "({} {})", operator, right),
             Expr::Binary { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
             Expr::Grouping { expression } => write!(f, "({})", expression),
+        }
+    }
+}
+
+
+pub struct AstPrinter;
+
+impl Visitor<String> for AstPrinter {
+    fn visit_literal_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Literal { value } => Ok(format!("{}", value)),
+            _ => Err(Error::new("Expected literal expression", ErrorType::ParseError)),
+        }
+    }
+
+    fn visit_unary_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Unary { operator, right } => {
+                let right = right.accept(self)?;
+                Ok(format!("({} {})", operator, right))
+            }
+            _ => Err(Error::new("Expected unary expression", ErrorType::ParseError)),
+        }
+    }
+
+    fn visit_binary_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Binary { left, operator, right } => {
+                let left = left.accept(self)?;
+                let right = right.accept(self)?;
+                Ok(format!("({} {} {})", left, operator, right))
+            }
+            _ => Err(Error::new("Expected binary expression", ErrorType::ParseError)),
+        }
+    }
+
+    fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Grouping { expression } => {
+                let expression = expression.accept(self)?;
+                Ok(format!("({})", expression))
+            }
+            _ => Err(Error::new("Expected grouping expression", ErrorType::ParseError)),
         }
     }
 }
@@ -85,5 +129,6 @@ mod tests {
             }),
         };
         println!("{}", expr);
+        println!("{}", expr.accept(&mut AstPrinter).unwrap());
     }
 }
