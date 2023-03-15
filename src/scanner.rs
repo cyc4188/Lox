@@ -30,6 +30,7 @@ impl Scanner {
             self.start = self.current;
             self.scan_token();
         } 
+        self.tokens.push(self.get_token(TokenType::Eof, Literal::Nil));
     }
 
 

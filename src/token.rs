@@ -2,10 +2,10 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    lexeme: String,
-    token_type: TokenType,
-    literal: Literal,
-    line: usize,
+    pub lexeme: String,
+    pub token_type: TokenType,
+    pub literal: Literal,
+    pub line: usize,
 }
 
 impl Token {
@@ -77,7 +77,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Display, Debug, Clone)]
+#[derive(Display, Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,

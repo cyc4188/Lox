@@ -22,7 +22,7 @@ impl Error {
 #[derive(Debug)]
 pub enum ErrorType {
     ScanError,
-    ParseError,
+    SyntaxError,
     RuntimeError,
 }
 

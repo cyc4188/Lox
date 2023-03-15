@@ -71,7 +71,7 @@ impl Visitor<String> for AstPrinter {
     fn visit_literal_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::Literal { value } => Ok(format!("{}", value)),
-            _ => Err(Error::new("Expected literal expression", ErrorType::ParseError)),
+            _ => Err(Error::new("Expected literal expression", ErrorType::SyntaxError)),
         }
     }
 
@@ -81,7 +81,7 @@ impl Visitor<String> for AstPrinter {
                 let right = right.accept(self)?;
                 Ok(format!("({} {})", operator, right))
             }
-            _ => Err(Error::new("Expected unary expression", ErrorType::ParseError)),
+            _ => Err(Error::new("Expected unary expression", ErrorType::SyntaxError)),
         }
     }
 
@@ -92,7 +92,7 @@ impl Visitor<String> for AstPrinter {
                 let right = right.accept(self)?;
                 Ok(format!("({} {} {})", left, operator, right))
             }
-            _ => Err(Error::new("Expected binary expression", ErrorType::ParseError)),
+            _ => Err(Error::new("Expected binary expression", ErrorType::SyntaxError)),
         }
     }
 
@@ -102,7 +102,7 @@ impl Visitor<String> for AstPrinter {
                 let expression = expression.accept(self)?;
                 Ok(format!("({})", expression))
             }
-            _ => Err(Error::new("Expected grouping expression", ErrorType::ParseError)),
+            _ => Err(Error::new("Expected grouping expression", ErrorType::SyntaxError)),
         }
     }
 }
