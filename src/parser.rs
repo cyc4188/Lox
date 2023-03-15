@@ -138,15 +138,10 @@ impl Parser {
 
         if matches!(self, LeftParen) {
             let expr = self.expression()?;
-            if matches!(self, RightParen) {
-                return Ok(Expr::Grouping { expression: Box::new(expr) });
-            }
-            else {
-                return Err(Error {
-                    message: "Expect ')' after expression.".to_string(),
-                    error_type: ErrorType::SyntaxError,
-                })
-            }
+            
+            self.consume(RightParen, "Expect ')' after expression.")?;
+
+            return Ok(Expr::Grouping { expression: Box::new(expr) });
         }
         Err(Error {
             message: "Expect expression".to_string(),
@@ -186,6 +181,16 @@ impl Parser {
             return false;
         }
         true
+    }
+
+    pub fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, Error> {
+        if self.check(token_type) {
+            return Ok(self.advance());
+        }
+        Err(Error {
+            message: message.to_string(),
+            error_type: ErrorType::SyntaxError,
+        })
     }
 
 }
