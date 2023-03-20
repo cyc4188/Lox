@@ -1,6 +1,6 @@
-use log::info;
-
-use crate::scanner::Scanner;
+use log::{info, debug};
+use crate::{scanner::Scanner};
+use crate::parser::Parser;
 use std::{fs, io};
 
 pub struct Loxer {
@@ -25,10 +25,17 @@ impl Loxer {
             }
             return;
         }
+
+        let mut parser = Parser::new(tokens);
         
-        for token in tokens {
-            println!("{:?}", token);
+        let res = parser.expression();
+
+        if let Ok(expr) = res {
+            debug!("Parsed expression: {}", expr);
+        } else {
+            debug!("Error parsing expression: {:?}", res);
         }
+         
     }
 
     // Run in the command line
@@ -61,5 +68,23 @@ impl Loxer {
         let source = fs::read_to_string(path)
             .expect("Could not read file");
         self.run(source.as_str());
+    }
+}
+
+
+
+
+#[cfg(test)]
+mod test {
+    use crate::set_logger;
+
+    use super::*;
+
+    #[test]
+    fn test_run() {
+        set_logger();
+        info!("Running test_run())");
+        let loxer = Loxer::new();
+        loxer.run("1+2*(3*4 - 6 / 2)");
     }
 }

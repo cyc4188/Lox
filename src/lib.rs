@@ -5,6 +5,7 @@ pub mod error;
 pub mod utils;
 pub mod expression;
 pub mod parser;
+pub mod logger;
 
 pub use loxer::Loxer;
 pub use token::{Literal, Token, TokenType};
@@ -12,8 +13,9 @@ pub use error::*;
 pub use utils::*;
 pub use expression::*;
 pub use parser::*;
+pub use logger::*;
 
-pub use log::info;
+pub use log::{info, debug};
 
 #[macro_use]
 extern crate enum_display_derive;

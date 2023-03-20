@@ -43,6 +43,7 @@ pub trait Visitor<T> {
 }
 
 impl Expr {
+    #[allow(unused_variables)]
     pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> Result<T, Error> {
         match self {
             Expr::Literal { value } => visitor.visit_literal_expr(self),

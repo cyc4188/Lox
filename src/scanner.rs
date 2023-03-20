@@ -27,8 +27,8 @@ impl Scanner {
     pub fn scan_tokens(&mut self) {
         // loop until we reach the end of the source code
         while !self.is_end() {
-            self.start = self.current;
             self.scan_token();
+            self.start = self.current;
         } 
         self.tokens.push(self.get_token(TokenType::Eof, Literal::Nil));
     }
@@ -94,7 +94,7 @@ impl Scanner {
 
     /// return a token, according to token_type and literal
     fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
-        log::debug!("{}", &self.source[self.start..self.current]);
+        log::trace!("{}", &self.source[self.start..self.current]);
         Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
     }
 

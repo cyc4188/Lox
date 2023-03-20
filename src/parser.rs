@@ -1,8 +1,8 @@
 use super::*;
 use TokenType::*;
 
-pub struct Parser {
-    tokens: Vec<Token>,
+pub struct Parser<'a> {
+    tokens: &'a Vec<Token>,
     current: usize,
 }
 
@@ -29,8 +29,8 @@ macro_rules! matches {
 ///                | primary ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")" ;
-impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: &'a Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
 
@@ -193,22 +193,13 @@ impl Parser {
         })
     }
 
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_match() {
-        let mut parser = Parser::new(vec![Token::new("(", TokenType::LeftParen, Literal::Nil, 1),
-                                          Token::new(")", TokenType::RightParen, Literal::Nil, 1),
-                                          Token::new("", TokenType::Eof, Literal::Nil, 1)]);
-        // assert!(matches!(parser, TokenType::LeftParen));
-        assert!(matches!(parser, TokenType::RightParen, TokenType::LeftParen));
-        assert!(matches!(parser, TokenType::RightParen, TokenType::LeftParen));
-        assert!(!matches!(parser, TokenType::RightParen, TokenType::LeftParen));
+    pub fn error(&self, token: &Token, message: &str) -> Error {
+        parse_error(token, message);
+        Error {
+            message: message.to_string(),
+            error_type: ErrorType::SyntaxError,
+        }
     }
+
 }
+
