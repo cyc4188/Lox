@@ -28,7 +28,7 @@ impl Loxer {
 
         let mut parser = Parser::new(tokens);
         
-        let res = parser.expression();
+        let res = parser.parse();
 
         if let Ok(expr) = res {
             debug!("Parsed expression: {}", expr);

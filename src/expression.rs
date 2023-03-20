@@ -68,6 +68,16 @@ impl fmt::Display for Expr {
 
 pub struct AstPrinter;
 
+impl AstPrinter {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn print(&mut self, expr: &Expr) -> Result<String, Error> {
+        expr.accept(self)
+    }
+}
+
 impl Visitor<String> for AstPrinter {
     fn visit_literal_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {

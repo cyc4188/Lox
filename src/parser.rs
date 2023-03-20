@@ -39,11 +39,15 @@ impl<'a> Parser<'a> {
 // ------------------------------------------------
 // ------------------------------------------------
 
-    pub fn expression(&mut self) -> Result<Expr, Error> {
+    pub fn parse(&mut self) -> Result<Expr, Error> {
+        return self.expression(); 
+    }
+
+    fn expression(&mut self) -> Result<Expr, Error> {
         self.equality()
     }
     
-    pub fn equality(&mut self) -> Result<Expr, Error> {
+    fn equality(&mut self) -> Result<Expr, Error> {
         let mut expr = self.comparison()?;
 
         while matches!(self, BangEqual, EqualEqual) {
@@ -59,7 +63,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    pub fn comparison(&mut self) -> Result<Expr, Error> {
+    fn comparison(&mut self) -> Result<Expr, Error> {
         let mut expr = self.term()?;
         while matches!(self, Greater, GreaterEqual, Less, LessEqual) {
             let operator = self.previous().clone();
@@ -74,7 +78,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    pub fn term(&mut self) -> Result<Expr, Error> {
+    fn term(&mut self) -> Result<Expr, Error> {
         let mut expr = self.factor()?;
         while matches!(self, Minus, Plus) {
             let operator = self.previous().clone();
@@ -89,7 +93,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    pub fn factor(&mut self) -> Result<Expr, Error> {
+    fn factor(&mut self) -> Result<Expr, Error> {
         let mut expr = self.unary()?;
         while matches!(self, Slash, Star) {
             let operator = self.previous().clone();
@@ -104,7 +108,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    pub fn unary(&mut self) -> Result<Expr, Error> {
+    fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
             let right = self.unary()?;
@@ -116,7 +120,7 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
-    pub fn primary(&mut self) -> Result<Expr, Error> {
+    fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
             return Ok(Expr::Literal { value: Literal::Boolean(false) });
         }
@@ -143,10 +147,11 @@ impl<'a> Parser<'a> {
 
             return Ok(Expr::Grouping { expression: Box::new(expr) });
         }
-        Err(Error {
-            message: "Expect expression".to_string(),
-            error_type: ErrorType::SyntaxError
-        })
+        Err(self.error(self.peak(), "Expect expression"))
+        // Err(Error {
+        //     message: "Expect expression".to_string(),
+        //     error_type: ErrorType::SyntaxError
+        // })
     }
 
 
@@ -154,26 +159,26 @@ impl<'a> Parser<'a> {
 // ------------------------------------------------
 // ------------------------------------------------
     
-    pub fn peak(&self) -> &Token {
+    fn peak(&self) -> &Token {
         &self.tokens[self.current]
     }
 
-    pub fn is_end(&self) -> bool {
+    fn is_end(&self) -> bool {
         self.peak().token_type == TokenType::Eof
     }
 
-    pub fn advance(&mut self) -> &Token {
+    fn advance(&mut self) -> &Token {
         if !self.is_end() {
             self.current += 1;
         }
         self.previous()
     }
 
-    pub fn previous(&self) -> &Token {
+    fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
 
-    pub fn check(&mut self, token_type: TokenType) -> bool {
+    fn check(&mut self, token_type: TokenType) -> bool {
         if self.is_end() {
             return false;
         }
@@ -183,7 +188,7 @@ impl<'a> Parser<'a> {
         true
     }
 
-    pub fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, Error> {
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, Error> {
         if self.check(token_type) {
             return Ok(self.advance());
         }
@@ -198,6 +203,24 @@ impl<'a> Parser<'a> {
         Error {
             message: message.to_string(),
             error_type: ErrorType::SyntaxError,
+        }
+    }
+
+    // until we reach a semicolon or a statement keyword
+    fn synchronize(&mut self) {
+        self.advance();
+
+        while !self.is_end() {
+            if self.previous().token_type == TokenType::Semicolon {
+                return;
+            }
+
+            match self.peak().token_type {
+                Class | Fun | Var | For | If | While | Print | Return => return,
+                _ => (),
+            }
+
+            self.advance();
         }
     }
 
