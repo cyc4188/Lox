@@ -108,21 +108,25 @@ impl Visitor<Object> for Interpreter {
 
                     TokenType::Greater => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l > r)),
+                        (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l > r)),
                         _ => self.number_operand_error(operator)
                     }
 
                     TokenType::GreaterEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l >= r)),
+                        (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l >= r)),
                         _ => self.number_operand_error(operator)
                     }
 
                     TokenType::Less => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l < r)),
+                        (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l < r)),
                         _ => self.number_operand_error(operator)
                     }
 
                     TokenType::LessEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l <= r)),
+                        (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l <= r)),
                         _ => self.number_operand_error(operator)
                     }
 

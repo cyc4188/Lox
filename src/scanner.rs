@@ -217,6 +217,16 @@ impl Scanner {
         self.had_error = true;
     }
 
+    pub fn report_errors(&self) {
+        for error in self.errors.iter() {
+            if let ErrorType::ScanError(line) = error.error_type {
+                eprintln!("[line {}] Error: {}", line, error.message);
+            } else {
+                eprintln!("Error: {}", error.message);
+            }
+        }
+    }
+
 }
 
 #[cfg(test)]

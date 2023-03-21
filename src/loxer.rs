@@ -2,7 +2,9 @@
 // use crate::{scanner::Scanner};
 // use crate::parser::Parser;
 use super::*;
-use std::{fs, io};
+use std::fs;
+use rustyline::error::ReadlineError;
+use rustyline::{DefaultEditor, Result};
 
 pub struct Loxer {
     had_error: bool, 
@@ -18,61 +20,73 @@ impl Loxer {
         info!("Running source code: {}", source);
         let mut scanner = Scanner::new(source);
         scanner.scan_tokens();
-        let tokens = &scanner.tokens;
+       let tokens = &scanner.tokens;
 
         if scanner.had_error {
-            for error in &scanner.errors {
-                if let ErrorType::ScanError(line) = error.error_type {
-                    eprintln!("[line {}] Error: {}", line, error.message);
-                } else {
-                    eprintln!("Error: {}", error.message);
-                }
-            }
+            scanner.report_errors();
             return;
         }
 
         let mut parser = Parser::new(tokens);
-        
         let res = parser.parse();
 
         if let Ok(expr) = res {
-            debug!("Parsed expression: {}", expr);
+            info!("Parsed expression: {}", expr);
             let mut interpreter = Interpreter::new();
             
-            let res = interpreter.interpret(&expr).unwrap();
-            println!("{}", res);
+            let res = interpreter.interpret(&expr);
+            if let Ok(value) = res {
+                println!("{}", value);
+            } else {
+                let error = res.err().unwrap();
+                log::error!("{}", error.message);
+            }
 
         } else {
             let error = res.err().unwrap();
-            debug!("Error parsing expression: {:?}", error);
+            log::error!("Error parsing expression: {:?}", error);
         }
          
     }
 
     // Run in the command line
-    pub fn run_prompt(&mut self) {
+    pub fn run_prompt(&mut self) -> Result<()>{
         log::info!("Running in prompt mode");
-        loop {
-            print!("> ");
-            io::Write::flush(&mut io::stdout()).unwrap();
 
-            let mut input = String::new();
-            match io::stdin().read_line(&mut input) {
-                Ok(0) => {
-                    log::info!("EOF");
-                    break;
+        // `()` can be used when no completer is required
+        let mut rl = DefaultEditor::new()?;
+        #[cfg(feature = "with-file-history")]
+        if rl.load_history("history.txt").is_err() {
+            println!("No previous history.");
+        }
+
+        loop {
+            let readline = rl.readline(">> ");
+
+            match readline {
+                Ok(line) => {
+                    log::debug!("Read line: {}", line);
+                    if line == "" {
+                        continue;
+                    }
+                    self.run(line.as_str());
+                    self.had_error = false; // Reset error flag
                 }
-                Ok(_) => {
-                    log::trace!("Read line: {}", input);
-                }
-                Err(error) => {
-                    eprintln!("Error reading line: {}", error);
-                    continue;
+                Err(ReadlineError::Interrupted) => {
+                    println!("CTRL-C");
+                    break
+                },
+                Err(ReadlineError::Eof) => {
+                    println!("CTRL-D");
+                    break
+                },
+                Err(err) => {
+                    println!("Error: {:?}", err);
+                    break
                 }
             }
-            self.run(input.as_str());
-            self.had_error = false; // Reset error flag
         }
+        Ok(())
     }
 
     pub fn run_file(&self, path: &str) {
