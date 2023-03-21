@@ -8,7 +8,7 @@ pub struct Scanner {
     line: usize,    // current line
     pub tokens: Vec<Token>,
     pub had_error: bool,
-    pub errors: Vec<ScanError>,
+    pub errors: Vec<Error>,
 }
 
 impl Scanner {
@@ -213,7 +213,7 @@ impl Scanner {
 
 
     fn error(&mut self, line: usize, message: &str) {
-        self.errors.push(ScanError::new(line, message));
+        self.errors.push(Error { message: message.to_string(), error_type: ErrorType::ScanError(line) });
         self.had_error = true;
     }
 

@@ -11,6 +11,7 @@ pub mod object;
 
 pub use loxer::Loxer;
 pub use token::{Literal, Token, TokenType};
+pub use scanner::*;
 pub use error::*;
 pub use utils::*;
 pub use expression::*;

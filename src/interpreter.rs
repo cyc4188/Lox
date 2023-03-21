@@ -3,20 +3,29 @@ use super::*;
 pub struct Interpreter;
 
 impl Interpreter {
+
     pub fn new() -> Self {
         Self {}
+    }
+
+    pub fn interpret(&mut self, expr: &Expr) -> Result<Object, Error> {
+        self.evaluate(expr)
+    }
+
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<Object, Error> {
+        expr.accept(self)
     }
 
     fn number_operand_error(&self, operator: &Token) -> Result<Object, Error> {
         Err(
             Error {
                 message: format!("Operand of {} must be a number.", operator.token_type),
-                error_type: ErrorType::RuntimeError,
+                error_type: ErrorType::RuntimeError(operator.clone()),
             }
         )
     }
 
-    fn is_truthy(&self, object: &Object) -> bool {
+    fn is_truthy(object: &Object) -> bool {
         match object {
             Object::Nil => false,
             Object::Boolean(b) => *b,
@@ -24,8 +33,17 @@ impl Interpreter {
         }
     }
 
-    fn is_equal(&self, left: &Object, right: &Object) -> bool {
-        todo!();
+    fn is_equal(left: &Object, right: &Object) -> bool {
+        left.equals(right)
+    }
+
+    fn stringify(object: &Object) -> String {
+        match object {
+            Object::Nil => "nil".to_string(),
+            Object::Boolean(b) => b.to_string(),
+            Object::Number(n) => n.to_string(),
+            Object::String(s) => s.clone(),
+        }
     }
 }
 
@@ -41,7 +59,7 @@ impl Visitor<Object> for Interpreter {
     fn visit_unary_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
             Expr::Unary { operator, right } => {
-                let right = right.accept(self)?;
+                let right = self.evaluate(right)?;
                 
                 // -, !
                 match operator.token_type {
@@ -52,7 +70,7 @@ impl Visitor<Object> for Interpreter {
                             _ => self.number_operand_error(operator),
                         }
                     }
-                    TokenType::Bang => Ok(Object::Boolean(!self.is_truthy(&right))),
+                    TokenType::Bang => Ok(Object::Boolean(!Interpreter::is_truthy(&right))),
                     _ => unreachable!(),
                 }
             }
@@ -62,8 +80,8 @@ impl Visitor<Object> for Interpreter {
     fn visit_binary_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
             Expr::Binary { left, operator, right } => {
-                let left = left.accept(self)?;
-                let right = right.accept(self)?;
+                let left = self.evaluate(left)?;
+                let right = self.evaluate(right)?;
                 match operator.token_type {
                     TokenType::Minus => match (left, right) {
                             (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l - r)),
@@ -75,7 +93,7 @@ impl Visitor<Object> for Interpreter {
                         _ => Err(
                             Error {
                                 message: format!("Operands of {} must be two numbers or two strings.", operator.token_type),
-                                error_type: ErrorType::RuntimeError,
+                                error_type: ErrorType::RuntimeError(operator.clone()),
                             }
                         )
                     }
@@ -108,10 +126,12 @@ impl Visitor<Object> for Interpreter {
                         _ => self.number_operand_error(operator)
                     }
 
-                    TokenType::BangEqual => Ok(Object::Boolean(self.is_equal(&left, &right))),
+                    TokenType::BangEqual => Ok(Object::Boolean(!Interpreter::is_equal(&left, &right))),
+
+                    TokenType::EqualEqual => Ok(Object::Boolean(Interpreter::is_equal(&left, &right))),
 
                     TokenType::And => {
-                        if !self.is_truthy(&left) {
+                        if !Interpreter::is_truthy(&left) {
                             Ok(left)
                         } else {
                             Ok(right)
@@ -129,7 +149,7 @@ impl Visitor<Object> for Interpreter {
     }
     fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Grouping { expression } => expression.accept(self),
+            Expr::Grouping { expression } => self.evaluate(expression),
             _ => unreachable!(),
         }
     }

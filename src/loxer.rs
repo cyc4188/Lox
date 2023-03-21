@@ -1,6 +1,7 @@
-use log::{info, debug};
-use crate::{scanner::Scanner};
-use crate::parser::Parser;
+// use log::{info, debug};
+// use crate::{scanner::Scanner};
+// use crate::parser::Parser;
+use super::*;
 use std::{fs, io};
 
 pub struct Loxer {
@@ -21,7 +22,11 @@ impl Loxer {
 
         if scanner.had_error {
             for error in &scanner.errors {
-                println!("[line {}] Error: {}", error.line, error.message);
+                if let ErrorType::ScanError(line) = error.error_type {
+                    eprintln!("[line {}] Error: {}", line, error.message);
+                } else {
+                    eprintln!("Error: {}", error.message);
+                }
             }
             return;
         }
@@ -32,8 +37,14 @@ impl Loxer {
 
         if let Ok(expr) = res {
             debug!("Parsed expression: {}", expr);
+            let mut interpreter = Interpreter::new();
+            
+            let res = interpreter.interpret(&expr).unwrap();
+            println!("{}", res);
+
         } else {
-            debug!("Error parsing expression: {:?}", res);
+            let error = res.err().unwrap();
+            debug!("Error parsing expression: {:?}", error);
         }
          
     }
@@ -52,7 +63,7 @@ impl Loxer {
                     break;
                 }
                 Ok(_) => {
-                    log::debug!("Read line: {}", input);
+                    log::trace!("Read line: {}", input);
                 }
                 Err(error) => {
                     eprintln!("Error reading line: {}", error);
