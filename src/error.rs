@@ -1,8 +1,7 @@
 use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
-pub struct ScanError {
-    pub line: usize,
+pub struct ScanError { pub line: usize,
     pub message: String,
 }
 

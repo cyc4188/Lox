@@ -1,7 +1,7 @@
 // use crate::Literal;
 // use crate::{Token, TokenType};
 use super::*;
-use std::fmt::{self, Display};
+use std::fmt;
 
 ///expression     → literal
 //                | unary
@@ -19,7 +19,7 @@ use std::fmt::{self, Display};
 #[derive(Debug, Clone)]
 pub enum Expr {
     Literal{
-        value: LiteralValue,
+        value: Literal,
     },
     Unary {
         operator: Token,
@@ -35,16 +35,16 @@ pub enum Expr {
     },
 }
 
-#[derive(Clone, Display, Debug)]
-pub enum LiteralValue {
-    Number(f64),
-    String(String),
-    Boolean(bool),
-    Nil,
-}
+// #[derive(Clone, Display, Debug)]
+// pub enum LiteralValue {
+//     Number(f64),
+//     String(String),
+//     Boolean(bool),
+//     Nil,
+// }
 
 pub trait Visitor<T> {
-    fn visit_literal_expr(&mut self, value: &LiteralValue) -> Result<T, Error>;
+    fn visit_literal_expr(&mut self, value: &Literal) -> Result<T, Error>;
     fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
@@ -87,7 +87,7 @@ impl AstPrinter {
 }
 
 impl Visitor<String> for AstPrinter {
-    fn visit_literal_expr(&mut self, value: &LiteralValue) -> Result<String, Error> {
+    fn visit_literal_expr(&mut self, value: &Literal) -> Result<String, Error> {
         Ok(format!("{}", value))
     }
 
@@ -134,13 +134,13 @@ mod tests {
             left: Box::new(Expr::Unary {
                 operator: Token::new("-", TokenType::Minus, Literal::Nil, 1),
                 right: Box::new(Expr::Literal {
-                    value: LiteralValue::Number(123.0),
+                    value: Literal::Number(123.0),
                 }),
             }),
             operator: Token::new("*", TokenType::Star,  Literal::Nil, 1),
             right: Box::new(Expr::Grouping {
                 expression: Box::new(Expr::Literal {
-                    value: LiteralValue::Number(45.67),
+                    value: Literal::Number(45.67),
                 }),
             }),
         };
