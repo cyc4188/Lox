@@ -122,14 +122,14 @@ impl<'a> Parser<'a> {
 
     fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
-            return Ok(Expr::Literal { value: Literal::Boolean(false) });
+            return Ok(Expr::Literal { value: LiteralValue::Boolean(false) });
         }
         if matches!(self, True) {
-            return Ok(Expr::Literal { value: Literal::Boolean(true) });
+            return Ok(Expr::Literal { value: LiteralValue::Boolean(true) });
         }
 
         if matches!(self, Nil) {
-            return Ok(Expr::Literal { value: Literal::Nil });
+            return Ok(Expr::Literal { value: LiteralValue::Nil });
         }
 
         if matches!(self, Number, String) {

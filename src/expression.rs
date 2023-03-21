@@ -1,7 +1,7 @@
 // use crate::Literal;
 // use crate::{Token, TokenType};
 use super::*;
-use std::fmt;
+use std::fmt::{self, Display};
 
 ///expression     → literal
 //                | unary
@@ -19,7 +19,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum Expr {
     Literal{
-        value: Literal,
+        value: LiteralValue,
     },
     Unary {
         operator: Token,
@@ -35,8 +35,16 @@ pub enum Expr {
     },
 }
 
+#[derive(Clone, Display, Debug)]
+pub enum LiteralValue {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+    Nil,
+}
+
 pub trait Visitor<T> {
-    fn visit_literal_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    fn visit_literal_expr(&mut self, value: &LiteralValue) -> Result<T, Error>;
     fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
@@ -46,7 +54,7 @@ impl Expr {
     #[allow(unused_variables)]
     pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> Result<T, Error> {
         match self {
-            Expr::Literal { value } => visitor.visit_literal_expr(self),
+            Expr::Literal { value } => visitor.visit_literal_expr(value),
             Expr::Unary { operator, right } => visitor.visit_unary_expr(self),
             Expr::Binary { left, operator, right } => visitor.visit_binary_expr(self),
             Expr::Grouping { expression } => visitor.visit_grouping_expr(self),
@@ -79,11 +87,8 @@ impl AstPrinter {
 }
 
 impl Visitor<String> for AstPrinter {
-    fn visit_literal_expr(&mut self, expr: &Expr) -> Result<String, Error> {
-        match expr {
-            Expr::Literal { value } => Ok(format!("{}", value)),
-            _ => Err(Error::new("Expected literal expression", ErrorType::SyntaxError)),
-        }
+    fn visit_literal_expr(&mut self, value: &LiteralValue) -> Result<String, Error> {
+        Ok(format!("{}", value))
     }
 
     fn visit_unary_expr(&mut self, expr: &Expr) -> Result<String, Error> {
@@ -129,13 +134,13 @@ mod tests {
             left: Box::new(Expr::Unary {
                 operator: Token::new("-", TokenType::Minus, Literal::Nil, 1),
                 right: Box::new(Expr::Literal {
-                    value: Literal::Number(123.0),
+                    value: LiteralValue::Number(123.0),
                 }),
             }),
             operator: Token::new("*", TokenType::Star,  Literal::Nil, 1),
             right: Box::new(Expr::Grouping {
                 expression: Box::new(Expr::Literal {
-                    value: Literal::Number(45.67),
+                    value: LiteralValue::Number(45.67),
                 }),
             }),
         };
