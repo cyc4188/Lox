@@ -50,9 +50,9 @@ impl Interpreter {
 impl Visitor<Object> for Interpreter {
     fn visit_literal_expr(&mut self, value: &Literal) -> Result<Object, Error> {
         match value {
-            Literal::Boolean(b) => Ok(Object::Boolean(b.clone())),
+            Literal::Boolean(b) => Ok(Object::Boolean(*b)),
             Literal::Nil => Ok(Object::Nil),
-            Literal::Number(n) => Ok(Object::Number(n.clone())),
+            Literal::Number(n) => Ok(Object::Number(*n)),
             Literal::String(s) => Ok(Object::String(s.clone())),
         }
     }

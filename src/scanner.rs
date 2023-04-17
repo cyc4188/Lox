@@ -71,7 +71,6 @@ impl Scanner {
                 }
             }
             ' ' | '\r' | '\t' => {
-                return;
             }
             '\n' => {
                 self.line += 1;

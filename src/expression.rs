@@ -86,6 +86,12 @@ impl AstPrinter {
     }
 }
 
+impl Default for AstPrinter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Visitor<String> for AstPrinter {
     fn visit_literal_expr(&mut self, value: &Literal) -> Result<String, Error> {
         Ok(format!("{}", value))

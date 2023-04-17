@@ -1,6 +1,6 @@
 
 pub fn is_digit(c: char) -> bool {
-    c.is_digit(10)
+    c.is_ascii_digit()
 }
 
 pub fn is_alpha(c: char) -> bool {

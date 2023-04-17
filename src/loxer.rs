@@ -66,7 +66,7 @@ impl Loxer {
             match readline {
                 Ok(line) => {
                     log::debug!("Read line: {}", line);
-                    if line == "" {
+                    if line.is_empty() {
                         continue;
                     }
                     self.run(line.as_str());
@@ -96,7 +96,11 @@ impl Loxer {
     }
 }
 
-
+impl Default for Loxer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 
 #[cfg(test)]
