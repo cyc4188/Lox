@@ -1,7 +1,15 @@
-// use crate::Literal;
-// use crate::{Token, TokenType};
 use super::*;
 use std::fmt;
+
+pub mod expr {
+    use super::{Literal, Expr, Error};
+    pub trait Visitor<T> {
+        fn visit_literal_expr(&mut self, value: &Literal) -> Result<T, Error>;
+        fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    }
+}
 
 ///expression     → literal
 //                | unary
@@ -35,24 +43,10 @@ pub enum Expr {
     },
 }
 
-// #[derive(Clone, Display, Debug)]
-// pub enum LiteralValue {
-//     Number(f64),
-//     String(String),
-//     Boolean(bool),
-//     Nil,
-// }
-
-pub trait Visitor<T> {
-    fn visit_literal_expr(&mut self, value: &Literal) -> Result<T, Error>;
-    fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-    fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-    fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-}
 
 impl Expr {
     #[allow(unused_variables)]
-    pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> Result<T, Error> {
+    pub fn accept<T>(&self, visitor: &mut impl expr::Visitor<T>) -> Result<T, Error> {
         match self {
             Expr::Literal { value } => visitor.visit_literal_expr(value),
             Expr::Unary { operator, right } => visitor.visit_unary_expr(self),
@@ -92,7 +86,7 @@ impl Default for AstPrinter {
     }
 }
 
-impl Visitor<String> for AstPrinter {
+impl expr::Visitor<String> for AstPrinter {
     fn visit_literal_expr(&mut self, value: &Literal) -> Result<String, Error> {
         Ok(format!("{}", value))
     }

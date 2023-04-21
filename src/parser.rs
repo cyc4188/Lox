@@ -34,14 +34,42 @@ impl<'a> Parser<'a> {
         Self { tokens, current: 0 }
     }
 
-
-// expression parser[
-// ------------------------------------------------
-// ------------------------------------------------
-
     pub fn parse(&mut self) -> Result<Expr, Error> {
+        // TODO: update to parse statements
         self.expression()
     }
+
+
+// statement parser
+
+    #[allow(dead_code, unused_variables)] // TODO: delete
+    fn statement(&mut self) -> Result<Stmt, Error> {
+        if matches!(self, Print) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    #[allow(dead_code, unused_variables)] // TODO: delete
+    fn expression_statement(&mut self) -> Result<Stmt, Error> {
+        let expr = self.expression()?;
+        self.consume(Semicolon, "expected ';' after value")?;
+
+        Ok(Stmt::ExprStmt { expression: expr })
+    }
+
+    #[allow(dead_code, unused_variables)] // TODO: delete
+    fn print_statement(&mut self) -> Result<Stmt, Error> {
+        let expr = self.expression()?;
+        self.consume(Semicolon, "expected ';' after value")?;
+
+        Ok(Stmt::PrintStmt { expression: expr }) 
+    }
+
+// expression parser
+// ------------------------------------------------
+// ------------------------------------------------
 
     fn expression(&mut self) -> Result<Expr, Error> {
         self.equality()

@@ -8,6 +8,7 @@ pub mod parser;
 pub mod logger;
 pub mod interpreter;
 pub mod object;
+pub mod statement;
 
 pub use loxer::Loxer;
 pub use token::{Literal, Token, TokenType};
@@ -19,6 +20,7 @@ pub use parser::*;
 pub use logger::*;
 pub use interpreter::*;
 pub use object::*;
+pub use statement::*;
 
 pub use log::{info, debug};
 

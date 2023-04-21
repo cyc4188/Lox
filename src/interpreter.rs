@@ -47,7 +47,7 @@ impl Interpreter {
     }
 }
 
-impl Visitor<Object> for Interpreter {
+impl expr::Visitor<Object> for Interpreter {
     fn visit_literal_expr(&mut self, value: &Literal) -> Result<Object, Error> {
         match value {
             Literal::Boolean(b) => Ok(Object::Boolean(*b)),
@@ -105,31 +105,26 @@ impl Visitor<Object> for Interpreter {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l * r)),
                         _ => self.number_operand_error(operator)
                     }
-
                     TokenType::Greater => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l > r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l > r)),
                         _ => self.number_operand_error(operator)
                     }
-
                     TokenType::GreaterEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l >= r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l >= r)),
                         _ => self.number_operand_error(operator)
                     }
-
                     TokenType::Less => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l < r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l < r)),
                         _ => self.number_operand_error(operator)
                     }
-
                     TokenType::LessEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l <= r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l <= r)),
                         _ => self.number_operand_error(operator)
                     }
-
                     TokenType::BangEqual => Ok(Object::Boolean(!Interpreter::is_equal(&left, &right))),
 
                     TokenType::EqualEqual => Ok(Object::Boolean(Interpreter::is_equal(&left, &right))),
@@ -142,9 +137,6 @@ impl Visitor<Object> for Interpreter {
                         }
                     }
 
-                    // todo!
-                    // not complete
-
                     _ => unreachable!()
                 }
             },
@@ -156,5 +148,30 @@ impl Visitor<Object> for Interpreter {
             Expr::Grouping { expression } => self.evaluate(expression),
             _ => unreachable!(),
         }
+    }
+}
+
+impl stmt::Visitor<()> for Interpreter {
+    fn visit_expr_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::ExprStmt { expression } => {
+                self.evaluate(expression)?;
+            }
+            _ => unreachable!()
+        }
+
+        Ok(())
+    }
+
+    fn visit_print_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::PrintStmt { expression } => {
+                let value = self.evaluate(expression)?;
+                println!("{}", Interpreter::stringify(&value));
+            }
+            _ => unreachable!() 
+        }
+
+        Ok(())
     }
 }
