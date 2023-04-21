@@ -34,9 +34,13 @@ impl<'a> Parser<'a> {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, Error> {
-        // TODO: update to parse statements
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, Error> {
+        let mut stmts: Vec<Stmt> = Vec::new();
+        while !self.is_end() {
+            let stmt = self.statement()?; 
+            stmts.push(stmt);
+        }
+        Ok(stmts)
     }
 
 

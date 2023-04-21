@@ -1,7 +1,7 @@
 use crate::Error;
 
 use super::Expr;
-use std::fmt;
+use std::fmt::Display;
 
 pub mod stmt {
     use super::{Stmt, Error};
@@ -15,6 +15,7 @@ pub mod stmt {
 //                | printStmt ;
 // exprStmt       → expression ";" ;
 // printStmt      → "print" expression ";" ;
+#[derive(Debug, Clone)]
 pub enum Stmt {
     ExprStmt {
         expression: Expr,
@@ -26,7 +27,7 @@ pub enum Stmt {
 
 impl Stmt {
     #[allow(unused_variables)]
-    pub fn accpet<T>(&self, visitor: &mut impl stmt::Visitor<T>) -> Result<T, Error> {
+    pub fn accept<T>(&self, visitor: &mut impl stmt::Visitor<T>) -> Result<T, Error> {
         match self {
             Stmt::ExprStmt { expression } => visitor.visit_expr_stmt(self),
             Stmt::PrintStmt { expression } => visitor.visit_print_stmt(self), 

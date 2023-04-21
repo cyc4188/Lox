@@ -28,22 +28,22 @@ impl Loxer {
         }
 
         let mut parser = Parser::new(tokens);
-        let res = parser.parse();
+        let stmts = parser.parse();
 
-        if let Ok(expr) = res {
-            info!("Parsed expression: {}", expr);
+        if let Ok(expr) = stmts {
+            info!("Parsed expression: {:?}", expr);
             let mut interpreter = Interpreter::new();
             
             let res = interpreter.interpret(&expr);
-            if let Ok(value) = res {
-                println!("{}", value);
+            if let Ok(()) = res {
+
             } else {
                 let error = res.err().unwrap();
                 log::error!("{}", error.message);
             }
 
         } else {
-            let error = res.err().unwrap();
+            let error = stmts.err().unwrap();
             log::error!("Error parsing expression: {:?}", error);
         }
          

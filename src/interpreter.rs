@@ -8,12 +8,19 @@ impl Interpreter {
         Self {}
     }
 
-    pub fn interpret(&mut self, expr: &Expr) -> Result<Object, Error> {
-        self.evaluate(expr)
+    pub fn interpret(&mut self, stmts: &Vec<Stmt>) -> Result<(), Error> {
+        for stmt in stmts {
+            self.execute(stmt)?;
+        }
+        Ok(())
     }
 
     pub fn evaluate(&mut self, expr: &Expr) -> Result<Object, Error> {
         expr.accept(self)
+    }
+
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        stmt.accept(self)
     }
 
     fn number_operand_error(&self, operator: &Token) -> Result<Object, Error> {
