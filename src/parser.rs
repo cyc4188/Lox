@@ -46,7 +46,6 @@ impl<'a> Parser<'a> {
 
 // statement parser
 
-    #[allow(dead_code, unused_variables)] // TODO: delete
     fn statement(&mut self) -> Result<Stmt, Error> {
         if matches!(self, Print) {
             return self.print_statement();
@@ -55,7 +54,6 @@ impl<'a> Parser<'a> {
         self.expression_statement()
     }
 
-    #[allow(dead_code, unused_variables)] // TODO: delete
     fn expression_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
         self.consume(Semicolon, "expected ';' after value")?;
@@ -63,7 +61,6 @@ impl<'a> Parser<'a> {
         Ok(Stmt::ExprStmt { expression: expr })
     }
 
-    #[allow(dead_code, unused_variables)] // TODO: delete
     fn print_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
         self.consume(Semicolon, "expected ';' after value")?;
