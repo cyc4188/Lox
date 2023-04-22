@@ -31,7 +31,7 @@ macro_rules! matches {
 /// exprStmt       → expression ";" ;
 /// printStmt      → "print" expression ";" ;
 /// 
-///expression     → equality ;
+/// expression     → equality ;
 /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 /// term           → factor ( ( "-" | "+" ) factor )* ;
@@ -58,6 +58,8 @@ impl<'a> Parser<'a> {
 
 // statement parser
     
+    /// declaration    → varDecl
+    ///                 | statement ;
     fn declaration(&mut self) -> Result<Stmt, Error> {
         let res: Result<Stmt, Error> = if matches!(self, Var) {
             self.var_decl()
@@ -87,6 +89,8 @@ impl<'a> Parser<'a> {
         Ok(Stmt::VarStmt { name, initializer })
     }
 
+    /// statement      → exprStmt
+    ///                | printStmt ;
     fn statement(&mut self) -> Result<Stmt, Error> {
         if matches!(self, Print) {
             return self.print_statement();
@@ -95,6 +99,7 @@ impl<'a> Parser<'a> {
         self.expression_statement()
     }
 
+    /// exprStmt       → expression ";" ;
     fn expression_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expected ';' after value")?;
@@ -102,6 +107,7 @@ impl<'a> Parser<'a> {
         Ok(Stmt::ExprStmt { expression: expr })
     }
 
+    /// printStmt      → "print" expression ";" ;
     fn print_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expected ';' after value")?;
@@ -109,14 +115,16 @@ impl<'a> Parser<'a> {
         Ok(Stmt::PrintStmt { expression: expr }) 
     }
 
+// ------------------------------------------------
+// ------------------------------------------------
 // expression parser
-// ------------------------------------------------
-// ------------------------------------------------
 
+    /// expression     → equality ;
     fn expression(&mut self) -> Result<Expr, Error> {
         self.equality()
     }
     
+    /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     fn equality(&mut self) -> Result<Expr, Error> {
         let mut expr = self.comparison()?;
 
@@ -133,6 +141,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     fn comparison(&mut self) -> Result<Expr, Error> {
         let mut expr = self.term()?;
         while matches!(self, Greater, GreaterEqual, Less, LessEqual) {
@@ -148,6 +157,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// term           → factor ( ( "-" | "+" ) factor )* ;
     fn term(&mut self) -> Result<Expr, Error> {
         let mut expr = self.factor()?;
         while matches!(self, Minus, Plus) {
@@ -163,6 +173,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// factor         → unary ( ( "/" | "*" ) unary )* ;
     fn factor(&mut self) -> Result<Expr, Error> {
         let mut expr = self.unary()?;
         while matches!(self, Slash, Star) {
@@ -178,6 +189,8 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// unary          → ( "!" | "-" ) unary
+    ///                | primary ;
     fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
@@ -232,7 +245,7 @@ impl<'a> Parser<'a> {
     }
 
 
-// expression parser]
+// expression parser
 // ------------------------------------------------
 // ------------------------------------------------
     
