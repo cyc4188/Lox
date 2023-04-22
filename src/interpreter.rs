@@ -1,11 +1,15 @@
 use super::*;
 
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: Environment,
+}
 
 impl Interpreter {
 
     pub fn new() -> Self {
-        Self {}
+        Self {
+            environment: Environment::new(),
+        }
     }
 
     pub fn interpret(&mut self, stmts: &Vec<Stmt>) -> Result<(), Error> {
@@ -157,8 +161,20 @@ impl expr::Visitor<Object> for Interpreter {
         }
     }
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
-        // TODO
-        unimplemented!()
+        match expr {
+            Expr::Variable { name } => {
+                match self.environment.get(&name.lexeme.as_str()) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(
+                        Error {
+                            message: format!("Undefined variable '{}'.", name.lexeme),
+                            error_type: ErrorType::RuntimeError(name.clone()),
+                        }
+                    )
+                }
+            }
+            _ => unreachable!()
+        }
     }
 }
 
@@ -187,7 +203,16 @@ impl stmt::Visitor<()> for Interpreter {
     }
 
     fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
-        // TODO
-        unimplemented!()
+        match stmt {
+            Stmt::VarStmt { name, initializer } => {
+                let value = match initializer {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Object::Nil,
+                };
+                self.environment.define(name.lexeme.clone(), value);
+            } 
+            _ => unreachable!()
+        }
+        Ok(())
     }
 }
