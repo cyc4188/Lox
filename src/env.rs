@@ -1,17 +1,19 @@
 /// environment
 /// binding values to names
 
-use std::{collections::HashMap, fmt::format};
+use std::{collections::HashMap};
 
 use super::{Object, Error, ErrorType, Token};
 
 pub struct Environment {
+    enclosing: Option<Box<Environment>>,
     values: HashMap<String, Object>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
+    pub fn new(enclosing: Option<Box<Environment>>) -> Self {
         Self {
+            enclosing: enclosing,
             values: HashMap::new(),
         }
     }
@@ -21,7 +23,17 @@ impl Environment {
     }
 
     pub fn get(&self, name: &str) -> Option<&Object> {
-        self.values.get(name)
+        if let Some(query) = self.values.get(name) {
+            Some(query)
+        }
+        else {
+            if let Some(enclosing_inner) = self.enclosing.as_ref() {
+                enclosing_inner.get(name)
+            }
+            else {
+                None
+            }
+        }
     }
 
     pub fn assign(&mut self, name: &Token, value: &Object) -> Result<(), Error> {
@@ -29,12 +41,17 @@ impl Environment {
             self.values.insert(name.lexeme.clone(), value.clone());
             Ok(())
         } else {
-            Err(
-                Error {
-                    message: format!("Undefined variable '{}'.", name),
-                    error_type: ErrorType::RuntimeError(name.clone()),
-                }
-            )
+            if let Some(enclosing_inner) = self.enclosing.as_mut() {
+                enclosing_inner.assign(name, value)    
+            }            
+            else {
+                Err(
+                    Error {
+                        message: format!("Undefined variable '{}'.", name),
+                        error_type: ErrorType::RuntimeError(name.clone()),
+                    }
+                )
+            }
         }
     }
 

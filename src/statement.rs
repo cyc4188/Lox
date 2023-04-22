@@ -1,6 +1,5 @@
 use crate::Error;
 use super::{Expr, Token};
-use std::fmt::Display;
 
 pub mod stmt {
     use super::{Stmt, Error};
