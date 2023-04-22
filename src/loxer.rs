@@ -8,19 +8,23 @@ use rustyline::{DefaultEditor, Result};
 
 pub struct Loxer {
     had_error: bool, 
+    interpreter: Interpreter,
 }
 
 impl Loxer {
     pub fn new() -> Self {
-        Self {had_error: false}
+        Self {
+            had_error: false,
+            interpreter: Interpreter::new(),
+        }
     }
 
     /// Execute the source code
-    pub fn run (&self, source: &str) {
+    pub fn run (&mut self, source: &str) {
         info!("Running source code: {}", source);
         let mut scanner = Scanner::new(source);
         scanner.scan_tokens();
-       let tokens = &scanner.tokens;
+        let tokens = &scanner.tokens;
 
         if scanner.had_error {
             scanner.report_errors();
@@ -32,9 +36,9 @@ impl Loxer {
 
         if let Ok(expr) = stmts {
             info!("Parsed expression: {:?}", expr);
-            let mut interpreter = Interpreter::new();
+            // let mut interpreter = Interpreter::new();
             
-            let res = interpreter.interpret(&expr);
+            let res = self.interpreter.interpret(&expr);
             if let Ok(()) = res {
 
             } else {
@@ -89,7 +93,7 @@ impl Loxer {
         Ok(())
     }
 
-    pub fn run_file(&self, path: &str) {
+    pub fn run_file(&mut self, path: &str) {
         let source = fs::read_to_string(path)
             .expect("Could not read file");
         self.run(source.as_str());
@@ -113,7 +117,7 @@ mod test {
     fn test_run() {
         set_logger();
         info!("Running test_run())");
-        let loxer = Loxer::new();
+        let mut loxer = Loxer::new();
         loxer.run("1+2*(3*4 - 6 / 2)");
     }
 }
