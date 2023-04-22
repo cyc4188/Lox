@@ -176,6 +176,17 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!()
         }
     }
+    
+    fn visit_assign_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Assign { name, value }  => {
+                let value = self.evaluate(value)?;
+                self.environment.assign(name, &value)?;
+                return Ok(value);
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl stmt::Visitor<()> for Interpreter {
@@ -209,7 +220,7 @@ impl stmt::Visitor<()> for Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Object::Nil,
                 };
-                self.environment.define(name.lexeme.clone(), value);
+                self.environment.define(&name.lexeme, value);
             } 
             _ => unreachable!()
         }

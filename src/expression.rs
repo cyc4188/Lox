@@ -9,6 +9,7 @@ pub mod expr {
         fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -44,6 +45,10 @@ pub enum Expr {
     },
     Variable {
         name: Token,
+    },
+    Assign {
+        name: Token,
+        value: Box<Expr>,
     }
 }
 
@@ -57,6 +62,7 @@ impl Expr {
             Expr::Binary { left, operator, right } => visitor.visit_binary_expr(self),
             Expr::Grouping { expression } => visitor.visit_grouping_expr(self),
             Expr::Variable { name } => visitor.visit_variable_expr(self),
+            Expr::Assign { name, value } => visitor.visit_assign_expr(self),
         }
     }
 }
@@ -69,6 +75,7 @@ impl fmt::Display for Expr {
             Expr::Binary { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
             Expr::Grouping { expression } => write!(f, "({})", expression),
             Expr::Variable { name } => write!(f, "{}", name.lexeme),
+            Expr::Assign { name, value } => write!(f, "({} = {})", name.lexeme, value),
         }
     }
 }
@@ -133,6 +140,14 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(name.lexeme.to_string())
             }
             _ => Err(Error::new("Expected variable expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_assign_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Assign { name, value }  => {
+                Ok(format!("({} = {})", name.lexeme, value.accept(self)?))
+            }
+            _ => Err(Error::new("Expected assign expression", ErrorType::SyntaxError)),
         }
     }
 }

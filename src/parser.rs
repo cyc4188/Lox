@@ -31,7 +31,9 @@ macro_rules! matches {
 /// exprStmt       → expression ";" ;
 /// printStmt      → "print" expression ";" ;
 /// 
-/// expression     → equality ;
+/// expression     → assignment ;
+/// assignment     → IDENTIFIER "=" assignment
+///                | equality ;
 /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 /// term           → factor ( ( "-" | "+" ) factor )* ;
@@ -119,9 +121,26 @@ impl<'a> Parser<'a> {
 // ------------------------------------------------
 // expression parser
 
-    /// expression     → equality ;
+    /// expression     → assignment ;
     fn expression(&mut self) -> Result<Expr, Error> {
-        self.equality()
+        self.assignment()
+    }
+
+    /// assignment     → IDENTIFIER "=" assignment
+    ///                | equality ;
+    fn assignment(&mut self) -> Result<Expr, Error> {
+        let expr = self.equality();
+        if matches!(self, Equal) {
+            let value = self.assignment()?; 
+            if let Ok(Expr::Variable { name }) = expr {
+                return Ok(Expr::Assign { name, value: Box::new(value) });
+            }
+            return Err(
+                self.error(self.previous(), "Invalid assignment target")
+            );
+        }
+
+        expr
     }
     
     /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
