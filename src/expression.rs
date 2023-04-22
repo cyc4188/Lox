@@ -130,7 +130,7 @@ impl expr::Visitor<String> for AstPrinter {
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::Variable { name } => {
-                Ok(format!("{}", name.lexeme))
+                Ok(name.lexeme.to_string())
             }
             _ => Err(Error::new("Expected variable expression", ErrorType::SyntaxError)),
         }

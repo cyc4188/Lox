@@ -163,7 +163,7 @@ impl expr::Visitor<Object> for Interpreter {
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
             Expr::Variable { name } => {
-                match self.environment.get(&name.lexeme.as_str()) {
+                match self.environment.get(name.lexeme.as_str()) {
                     Some(value) => Ok(value.clone()),
                     None => Err(
                         Error {

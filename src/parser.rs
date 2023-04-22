@@ -59,17 +59,17 @@ impl<'a> Parser<'a> {
 // statement parser
     
     fn declaration(&mut self) -> Result<Stmt, Error> {
-        let res: Result<Stmt, Error>;
-        if matches!(self, Var) {
-            res =  self.var_decl();
-        }
-        else {
-            res = self.statement();
-        }
+        let res: Result<Stmt, Error> = if matches!(self, Var) {
+            self.var_decl()
+        } else {
+            self.statement()
+        };
+
         if res.is_err() {
             self.synchronize();
         }
-        return res;
+
+        res
     }
 
     /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
 
         self.consume(Semicolon, "Expect ';' after variable declaration")?;
 
-        Ok(Stmt::VarStmt { name: name, initializer: initializer })
+        Ok(Stmt::VarStmt { name, initializer })
     }
 
     fn statement(&mut self) -> Result<Stmt, Error> {
