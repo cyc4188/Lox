@@ -20,6 +20,17 @@ macro_rules! matches {
     };
 }
 
+
+
+/// program        → declaration* EOF ;
+/// declaration    → varDecl
+///                 | statement ;
+/// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+/// statement      → exprStmt
+///                | printStmt ;
+/// exprStmt       → expression ";" ;
+/// printStmt      → "print" expression ";" ;
+/// 
 ///expression     → equality ;
 /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
@@ -28,7 +39,8 @@ macro_rules! matches {
 /// unary          → ( "!" | "-" ) unary
 ///                | primary ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
-///                | "(" expression ")" ;
+///                | "(" expression ")" 
+///                | IDENTIFIER ;
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -37,7 +49,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Error> {
         let mut stmts: Vec<Stmt> = Vec::new();
         while !self.is_end() {
-            let stmt = self.statement()?; 
+            let stmt = self.declaration()?; 
             stmts.push(stmt);
         }
         Ok(stmts)
@@ -45,6 +57,35 @@ impl<'a> Parser<'a> {
 
 
 // statement parser
+    
+    fn declaration(&mut self) -> Result<Stmt, Error> {
+        let res: Result<Stmt, Error>;
+        if matches!(self, Var) {
+            res =  self.var_decl();
+        }
+        else {
+            res = self.statement();
+        }
+        if res.is_err() {
+            self.synchronize();
+        }
+        return res;
+    }
+
+    /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+    fn var_decl(&mut self) -> Result<Stmt, Error> {
+        let name = self.consume(Identifier, "Expect variable name")?.clone();
+
+        let mut initializer: Option<Expr> = None; 
+
+        if matches!(self, Equal) {
+            initializer = Some(self.expression()?);
+        }
+
+        self.consume(Semicolon, "Expect ';' after variable declaration")?;
+
+        Ok(Stmt::VarStmt { name: name, initializer: initializer })
+    }
 
     fn statement(&mut self) -> Result<Stmt, Error> {
         if matches!(self, Print) {
@@ -56,14 +97,14 @@ impl<'a> Parser<'a> {
 
     fn expression_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
-        self.consume(Semicolon, "expected ';' after value")?;
+        self.consume(Semicolon, "Expected ';' after value")?;
 
         Ok(Stmt::ExprStmt { expression: expr })
     }
 
     fn print_statement(&mut self) -> Result<Stmt, Error> {
         let expr = self.expression()?;
-        self.consume(Semicolon, "expected ';' after value")?;
+        self.consume(Semicolon, "Expected ';' after value")?;
 
         Ok(Stmt::PrintStmt { expression: expr }) 
     }
@@ -149,6 +190,9 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
+    /// primary        → NUMBER | STRING | "true" | "false" | "nil"
+    ///                | "(" expression ")" 
+    ///                | IDENTIFIER ;
     fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
             return Ok(Expr::Literal { value: Literal::Boolean(false) });
@@ -167,6 +211,10 @@ impl<'a> Parser<'a> {
                     value: self.previous().literal.clone()
                     }
                 )
+        }
+
+        if matches!(self, Identifier) {
+            return Ok(Expr::Variable { name: self.previous().clone() });
         }
 
         if matches!(self, LeftParen) {
@@ -207,7 +255,7 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
 
-    fn check(&mut self, token_type: TokenType) -> bool {
+    fn check(&self, token_type: TokenType) -> bool {
         if self.is_end() {
             return false;
         }
@@ -235,7 +283,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // until we reach a semicolon or a statement keyword
+    // until we reach a semicolon ';' or a statement keyword
     fn synchronize(&mut self) {
         self.advance();
 

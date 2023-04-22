@@ -156,6 +156,10 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!(),
         }
     }
+    fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        // TODO
+        unimplemented!()
+    }
 }
 
 impl stmt::Visitor<()> for Interpreter {
@@ -180,5 +184,10 @@ impl stmt::Visitor<()> for Interpreter {
         }
 
         Ok(())
+    }
+
+    fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        // TODO
+        unimplemented!()
     }
 }

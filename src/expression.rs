@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self};
 
 pub mod expr {
     use super::{Literal, Expr, Error};
@@ -8,6 +8,7 @@ pub mod expr {
         fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -41,6 +42,9 @@ pub enum Expr {
     Grouping {
         expression: Box<Expr>,
     },
+    Variable {
+        name: Token,
+    }
 }
 
 
@@ -52,6 +56,7 @@ impl Expr {
             Expr::Unary { operator, right } => visitor.visit_unary_expr(self),
             Expr::Binary { left, operator, right } => visitor.visit_binary_expr(self),
             Expr::Grouping { expression } => visitor.visit_grouping_expr(self),
+            Expr::Variable { name } => visitor.visit_variable_expr(self),
         }
     }
 }
@@ -63,6 +68,7 @@ impl fmt::Display for Expr {
             Expr::Unary { operator, right } => write!(f, "({} {})", operator, right),
             Expr::Binary { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
             Expr::Grouping { expression } => write!(f, "({})", expression),
+            Expr::Variable { name } => write!(f, "{}", name.lexeme),
         }
     }
 }
@@ -119,6 +125,14 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(format!("({})", expression))
             }
             _ => Err(Error::new("Expected grouping expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_variable_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Variable { name } => {
+                Ok(format!("{}", name.lexeme))
+            }
+            _ => Err(Error::new("Expected variable expression", ErrorType::SyntaxError)),
         }
     }
 }
