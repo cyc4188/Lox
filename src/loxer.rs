@@ -94,6 +94,7 @@ impl Loxer {
     }
 
     pub fn run_file(&mut self, path: &str) {
+        info!("Running file: {}", path);
         let source = fs::read_to_string(path)
             .expect("Could not read file");
         self.run(source.as_str());

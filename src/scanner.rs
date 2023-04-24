@@ -236,14 +236,14 @@ mod tests {
     fn test_scan_single_character_token() {
         let mut scanner = Scanner::new("(){},.");
         scanner.scan_tokens();
-        assert_eq!(scanner.tokens.len(), 6);
+        assert_eq!(scanner.tokens.len(), 7); // eof
     }
 
     #[test]
     fn test_scan_operator() {
         let mut scanner = Scanner::new("== != > >= < <=");
         scanner.scan_tokens();
-        assert_eq!(scanner.tokens.len(), 6);
+        assert_eq!(scanner.tokens.len(), 7);
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
         } 
