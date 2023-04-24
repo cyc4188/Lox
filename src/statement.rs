@@ -7,13 +7,16 @@ pub mod stmt {
         fn visit_expr_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_print_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
+        fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
     }
 }
 
-// statement      → exprStmt
-//                | printStmt ;
-// exprStmt       → expression ";" ;
-// printStmt      → "print" expression ";" ;
+/// statement      → exprStmt
+///                | printStmt ;
+///                | blcok ;
+/// exprStmt       → expression ";" ;
+/// printStmt      → "print" expression ";" ;
+/// blcok          → "{" declaration* "}" ;
 #[derive(Debug, Clone)]
 pub enum Stmt {
     ExprStmt {
@@ -25,6 +28,9 @@ pub enum Stmt {
     VarStmt {
         name: Token,
         initializer: Option<Expr>,
+    },
+    Block {
+        statements: Vec<Stmt>,
     }
 }
 
@@ -35,6 +41,7 @@ impl Stmt {
             Stmt::ExprStmt { expression } => visitor.visit_expr_stmt(self),
             Stmt::PrintStmt { expression } => visitor.visit_print_stmt(self), 
             Stmt::VarStmt { name, initializer } => visitor.visit_var_stmt(self),
+            Stmt::Block { statements } => visitor.visit_block_stmt(self),
         }
     }
 }

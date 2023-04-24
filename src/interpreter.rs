@@ -1,14 +1,16 @@
+use std::{rc::Rc, cell::RefCell};
+
 use super::*;
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: EnvironmentRef,
 }
 
 impl Interpreter {
 
     pub fn new() -> Self {
         Self {
-            environment: Environment::new(None),
+            environment: Rc::new(RefCell::new(Environment::new(None))),
         }
     }
 
@@ -163,8 +165,8 @@ impl expr::Visitor<Object> for Interpreter {
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
             Expr::Variable { name } => {
-                match self.environment.get(name.lexeme.as_str()) {
-                    Some(value) => Ok(value.clone()),
+                match self.environment.borrow().get(name.lexeme.as_str()) {
+                    Some(value) => Ok(value),
                     None => Err(
                         Error {
                             message: format!("Undefined variable '{}'.", name.lexeme),
@@ -181,7 +183,7 @@ impl expr::Visitor<Object> for Interpreter {
         match expr {
             Expr::Assign { name, value }  => {
                 let value = self.evaluate(value)?;
-                self.environment.assign(name, &value)?;
+                self.environment.borrow_mut().assign(name, &value)?;
                 return Ok(value);
             }
             _ => unreachable!()
@@ -220,10 +222,36 @@ impl stmt::Visitor<()> for Interpreter {
                     Some(expr) => self.evaluate(expr)?,
                     None => Object::Nil,
                 };
-                self.environment.define(&name.lexeme, value);
+                self.environment.borrow_mut().define(&name.lexeme, value);
             } 
             _ => unreachable!()
         }
         Ok(())
+    }
+
+    fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::Block { statements }  => {
+                // create a new scope
+                let sub_env = Rc::new(RefCell::new(Environment::new(Some(self.environment.clone()))));
+
+                self.environment = sub_env.clone();
+                
+                // iterate through the statements and execute them
+                let mut steps = || -> Result<(), Error> {
+                    for statement in statements {
+                        self.execute(statement)?;
+                    }
+                    Ok(())
+                };
+                let result = steps();
+
+                // remove the scope
+                self.environment = sub_env.borrow().enclosing.clone().unwrap();
+
+                result
+            }
+            _ => unreachable!()
+        }
     }
 }
