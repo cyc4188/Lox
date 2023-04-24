@@ -99,6 +99,9 @@ impl<'a> Parser<'a> {
         if matches!(self, Print) {
             return self.print_statement();
         }
+        if matches!(self, LeftBrace) {
+            return self.block_statement();
+        }
 
         self.expression_statement()
     }
@@ -117,6 +120,19 @@ impl<'a> Parser<'a> {
         self.consume(Semicolon, "Expected ';' after value")?;
 
         Ok(Stmt::PrintStmt { expression: expr }) 
+    }
+
+    /// block          | "{" declaration* "}" ;
+    fn block_statement(&mut self) -> Result<Stmt, Error> {
+        let mut stmts: Vec<Stmt> = Vec::new();
+        while !self.check(RightBrace) && !self.is_end() {
+            let stmt = self.declaration()?;
+            stmts.push(stmt);
+        }
+
+        self.consume(RightBrace, "Expect '}' after block")?;
+
+        Ok(Stmt::BlockStmt { statements: stmts })
     }
 
 // ------------------------------------------------

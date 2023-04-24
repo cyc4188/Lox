@@ -231,7 +231,7 @@ impl stmt::Visitor<()> for Interpreter {
 
     fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::Block { statements }  => {
+            Stmt::BlockStmt { statements }  => {
                 // create a new scope
                 let sub_env = Rc::new(RefCell::new(Environment::new(Some(self.environment.clone()))));
 

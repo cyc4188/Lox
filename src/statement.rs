@@ -29,7 +29,7 @@ pub enum Stmt {
         name: Token,
         initializer: Option<Expr>,
     },
-    Block {
+    BlockStmt {
         statements: Vec<Stmt>,
     }
 }
@@ -41,7 +41,7 @@ impl Stmt {
             Stmt::ExprStmt { expression } => visitor.visit_expr_stmt(self),
             Stmt::PrintStmt { expression } => visitor.visit_print_stmt(self), 
             Stmt::VarStmt { name, initializer } => visitor.visit_var_stmt(self),
-            Stmt::Block { statements } => visitor.visit_block_stmt(self),
+            Stmt::BlockStmt { statements } => visitor.visit_block_stmt(self),
         }
     }
 }
