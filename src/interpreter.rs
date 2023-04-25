@@ -189,6 +189,31 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!()
         }
     }
+
+    fn visit_logic_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Logical { left, operator, right } => {
+                let left_value = self.evaluate(left)?;
+                if operator.token_type == TokenType::Or {
+                    if Interpreter::is_truthy(&left_value) {
+                        return Ok(left_value);
+                    }
+                    else {
+                        return Ok(self.evaluate(right)?);
+                    }
+                }
+                else {
+                    if Interpreter::is_truthy(&left_value) {
+                        return Ok(self.evaluate(right)?);
+                    }
+                    else {
+                        return Ok(left_value);
+                    }
+                }
+            }
+            _ => unreachable!()
+        } 
+    }
 }
 
 impl stmt::Visitor<()> for Interpreter {

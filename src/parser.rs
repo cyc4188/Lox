@@ -34,7 +34,9 @@ macro_rules! matches {
 /// block          | "{" declaration* "}" ;
 /// expression     → assignment ;
 /// assignment     → IDENTIFIER "=" assignment
-///                | equality ;
+///                | logicOr ;
+/// logicOr        → logicAnd ( "or" logicAnd )* ;
+/// logicAnd       → equality ( "and" equality )* ;
 /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 /// term           → factor ( ( "-" | "+" ) factor )* ;
@@ -173,7 +175,8 @@ impl<'a> Parser<'a> {
     /// assignment     → IDENTIFIER "=" assignment
     ///                | equality ;
     fn assignment(&mut self) -> Result<Expr, Error> {
-        let expr = self.equality();
+        let expr = self.logic_or();
+
         if matches!(self, Equal) {
             let value = self.assignment()?;
             if let Ok(Expr::Variable { name }) = expr {
@@ -186,6 +189,36 @@ impl<'a> Parser<'a> {
         }
 
         expr
+    }
+
+    fn logic_or(&mut self) -> Result<Expr, Error> {
+        let mut expr = self.logic_and()?;
+        while matches!(self, Or) {
+            let operator = self.previous().clone();
+            let right = self.logic_and()?;
+            let left = expr; // give expr to left
+            expr = Expr::Logical {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            };
+        };
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> Result<Expr, Error> {
+        let mut expr = self.equality()?;
+        while matches!(self, And) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+            let left = expr; // give expr to left
+            expr = Expr::Logical {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            };
+        };
+        Ok(expr)
     }
 
     /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;

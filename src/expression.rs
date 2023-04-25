@@ -10,6 +10,7 @@ pub mod expr {
         fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -49,6 +50,11 @@ pub enum Expr {
     Assign {
         name: Token,
         value: Box<Expr>,
+    },
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
     }
 }
 
@@ -63,6 +69,7 @@ impl Expr {
             Expr::Grouping { expression } => visitor.visit_grouping_expr(self),
             Expr::Variable { name } => visitor.visit_variable_expr(self),
             Expr::Assign { name, value } => visitor.visit_assign_expr(self),
+            Expr::Logical { left, operator, right } => visitor.visit_logic_expr(self),
         }
     }
 }
@@ -76,6 +83,7 @@ impl fmt::Display for Expr {
             Expr::Grouping { expression } => write!(f, "({})", expression),
             Expr::Variable { name } => write!(f, "{}", name.lexeme),
             Expr::Assign { name, value } => write!(f, "({} = {})", name.lexeme, value),
+            Expr::Logical { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
         }
     }
 }
@@ -148,6 +156,16 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(format!("({} = {})", name.lexeme, value.accept(self)?))
             }
             _ => Err(Error::new("Expected assign expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_logic_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Logical { left, operator, right } => {
+                let left = left.accept(self)?;
+                let right = right.accept(self)?;
+                Ok(format!("({} {} {})", left, operator, right))
+            }
+            _ => Err(Error::new("Expected logic expression", ErrorType::SyntaxError)),
         }
     }
 }
