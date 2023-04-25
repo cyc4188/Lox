@@ -18,11 +18,15 @@ pub mod stmt {
 ///                | printStmt ;
 ///                | blcok ;
 ///                | whileStmt ;
+///                | forStmt ;
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
 /// blcok          → "{" declaration* "}" ;
 /// whileStmt      | "while" "(" expression ")" statement ;
+/// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
+///                         expression? ";"
+///                         expression? ")" statement ; 
 #[derive(Debug, Clone)]
 pub enum Stmt {
     ExprStmt {

@@ -1,3 +1,5 @@
+use std::vec;
+
 use super::*;
 use TokenType::*;
 
@@ -25,15 +27,19 @@ macro_rules! matches {
 ///                 | statement ;
 /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 /// statement      → exprStmt
-///                | ifStmt ;
-///                | printStmt ;
-///                | block ;
+///                | ifStmt 
+///                | printStmt 
+///                | block 
 ///                | whileStmt
+///                | forStmt ;
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
 /// block          | "{" declaration* "}" ;
 /// whileStmt      | "while" "(" expression ")" statement ;
+/// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
+///                         expression? ";"
+///                         expression? ")" statement ; 
 /// expression     → assignment ;
 /// assignment     → IDENTIFIER "=" assignment
 ///                | logicOr ;
@@ -121,6 +127,11 @@ impl<'a> Parser<'a> {
             return self.while_statement();
         }
 
+        // forStmt
+        if matches!(self, For) {
+            return self.for_statement();
+        }
+
         self.expression_statement()
     }
 
@@ -182,6 +193,50 @@ impl<'a> Parser<'a> {
             body: Box::new(body),
         })
     }
+
+    /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
+    ///                         expression? ";"
+    ///                         expression? ")" statement ; 
+    fn for_statement(&mut self) -> Result<Stmt, Error> {
+        // 语法脱糖, convert to while loop
+        self.consume(LeftParen, "Expect '(' after 'for'.")?;
+
+        let initializer: Option<Stmt> = if matches!(self, Semicolon) {
+            None
+        } else if matches!(self, Var) {
+            Some(self.var_decl()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition: Expr = if self.check(Semicolon) {
+            Expr::Literal { value: Literal::Boolean(true) }
+        } else {
+            self.expression()?
+        };
+        self.consume(Semicolon, "Expect ';' after loop condition.")?;
+
+        let increment: Option<Expr> = if self.check(RightParen) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+        self.consume(RightParen, "Expect ')' after for clauses.")?;
+        
+        let mut body = self.statement()?;
+
+        if let Some(increment) =increment  {
+            body = Stmt::BlockStmt { statements: vec![body, Stmt::ExprStmt { expression: increment }] };
+        }
+
+        body = Stmt::WhileStmt { condition, body: Box::new(body) };
+
+        if let Some(initializer) = initializer {
+            body = Stmt::BlockStmt { statements: vec![initializer, body] };
+        }
+
+        Ok(body)
+    }   
 
     // ------------------------------------------------
     // ------------------------------------------------
