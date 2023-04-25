@@ -16,7 +16,7 @@ impl Error {
 }
 
 pub fn report(line: usize, whr: &str,message: &str) {
-    eprintln!("[line: {}] Error{}: {}", line, whr,message);
+    eprintln!("[line {}] Error{}: {}", line, whr,message);
 }
 
 pub fn parse_error(token: &Token, msg: &str) {

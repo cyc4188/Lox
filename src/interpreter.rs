@@ -254,4 +254,19 @@ impl stmt::Visitor<()> for Interpreter {
             _ => unreachable!()
         }
     }
+
+    fn visit_if_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        // TODO
+        match stmt {
+            Stmt::IfStmt { condition, then_branch, else_branch } => {
+                if Interpreter::is_truthy(&self.evaluate(condition)?) {
+                    self.execute(then_branch)?;
+                } else if let Some(else_branch) = else_branch {
+                    self.execute(else_branch)?;
+                }
+                Ok(())
+            }
+            _ => unreachable!()
+        } 
+    }
 }
