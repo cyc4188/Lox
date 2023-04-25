@@ -9,6 +9,7 @@ pub mod stmt {
         fn visit_print_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
+        fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
     }
 }
 
@@ -16,10 +17,12 @@ pub mod stmt {
 ///                | ifStmt ;
 ///                | printStmt ;
 ///                | blcok ;
+///                | whileStmt ;
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
 /// blcok          → "{" declaration* "}" ;
+/// whileStmt      | "while" "(" expression ")" statement ;
 #[derive(Debug, Clone)]
 pub enum Stmt {
     ExprStmt {
@@ -39,6 +42,10 @@ pub enum Stmt {
     },
     BlockStmt {
         statements: Vec<Stmt>,
+    },
+    WhileStmt {
+        condition: Expr,
+        body: Box<Stmt>,
     }
 }
 
@@ -51,6 +58,7 @@ impl Stmt {
             Stmt::PrintStmt { expression } => visitor.visit_print_stmt(self), 
             Stmt::VarStmt { name, initializer } => visitor.visit_var_stmt(self),
             Stmt::BlockStmt { statements } => visitor.visit_block_stmt(self),
+            Stmt::WhileStmt { condition, body } => visitor.visit_while_stmt(self),
         }
     }
 }

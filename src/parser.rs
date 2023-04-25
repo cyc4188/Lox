@@ -28,10 +28,12 @@ macro_rules! matches {
 ///                | ifStmt ;
 ///                | printStmt ;
 ///                | block ;
+///                | whileStmt
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
 /// block          | "{" declaration* "}" ;
+/// whileStmt      | "while" "(" expression ")" statement ;
 /// expression     → assignment ;
 /// assignment     → IDENTIFIER "=" assignment
 ///                | logicOr ;
@@ -97,6 +99,7 @@ impl<'a> Parser<'a> {
     ///                | ifStmt ;
     ///                | printStmt ;
     ///                | block ;
+    ///                | whileStmt
     fn statement(&mut self) -> Result<Stmt, Error> {
         // printStmt
         if matches!(self, Print) {
@@ -111,6 +114,11 @@ impl<'a> Parser<'a> {
         // ifStmt
         if matches!(self, If) {
             return self.if_statement();
+        }
+
+        // whileStmt
+        if matches!(self, While) {
+            return self.while_statement();
         }
 
         self.expression_statement()
@@ -161,6 +169,18 @@ impl<'a> Parser<'a> {
         self.consume(RightBrace, "Expect '}' after block")?;
 
         Ok(Stmt::BlockStmt { statements: stmts })
+    }
+
+    /// whileStmt      | "while" "(" expression ")" statement ;
+    fn while_statement(&mut self) -> Result<Stmt, Error> {
+        self.consume(LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(RightParen, "Expect ')' after condition.")?;
+        let body = self.statement()?;
+        Ok(Stmt::WhileStmt {
+            condition,
+            body: Box::new(body),
+        })
     }
 
     // ------------------------------------------------

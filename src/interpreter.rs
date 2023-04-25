@@ -281,13 +281,24 @@ impl stmt::Visitor<()> for Interpreter {
     }
 
     fn visit_if_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
-        // TODO
         match stmt {
             Stmt::IfStmt { condition, then_branch, else_branch } => {
                 if Interpreter::is_truthy(&self.evaluate(condition)?) {
                     self.execute(then_branch)?;
                 } else if let Some(else_branch) = else_branch {
                     self.execute(else_branch)?;
+                }
+                Ok(())
+            }
+            _ => unreachable!()
+        } 
+    }
+
+    fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::WhileStmt { condition, body }  => {
+                while Interpreter::is_truthy(&self.evaluate(condition)?) {
+                    self.execute(body)?;
                 }
                 Ok(())
             }
