@@ -30,7 +30,7 @@ cargo test
 
 - [x] Statement and State
 
-- [ ] Control Flow
+- [x] Control Flow
 
 - [ ] Functions
 

@@ -50,7 +50,8 @@ macro_rules! matches {
 /// term           → factor ( ( "-" | "+" ) factor )* ;
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
-///                | primary ;
+///                | call ;
+/// call           → primary ( "(" arguments? ")" )* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER ;
@@ -362,7 +363,7 @@ impl<'a> Parser<'a> {
     }
 
     /// unary          → ( "!" | "-" ) unary
-    ///                | primary ;
+    ///                | call ;
     fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
@@ -373,6 +374,13 @@ impl<'a> Parser<'a> {
             });
         }
         self.primary()
+    }
+
+
+    /// call          → primary ( "(" arguments? ")" )* ;
+    fn call(&mut self) -> Result<Expr, Error> {
+        // TODO
+        unimplemented!()
     }
 
     /// primary        → NUMBER | STRING | "true" | "false" | "nil"
