@@ -1,7 +1,18 @@
-// use crate::Literal;
-// use crate::{Token, TokenType};
 use super::*;
-use std::fmt;
+use std::fmt::{self};
+
+pub mod expr {
+    use super::{Literal, Expr, Error};
+    pub trait Visitor<T> {
+        fn visit_literal_expr(&mut self, value: &Literal) -> Result<T, Error>;
+        fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+    }
+}
 
 ///expression     → literal
 //                | unary
@@ -33,31 +44,32 @@ pub enum Expr {
     Grouping {
         expression: Box<Expr>,
     },
+    Variable {
+        name: Token,
+    },
+    Assign {
+        name: Token,
+        value: Box<Expr>,
+    },
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    }
 }
 
-// #[derive(Clone, Display, Debug)]
-// pub enum LiteralValue {
-//     Number(f64),
-//     String(String),
-//     Boolean(bool),
-//     Nil,
-// }
-
-pub trait Visitor<T> {
-    fn visit_literal_expr(&mut self, value: &Literal) -> Result<T, Error>;
-    fn visit_unary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-    fn visit_binary_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-    fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<T, Error>;
-}
 
 impl Expr {
     #[allow(unused_variables)]
-    pub fn accept<T>(&self, visitor: &mut impl Visitor<T>) -> Result<T, Error> {
+    pub fn accept<T>(&self, visitor: &mut impl expr::Visitor<T>) -> Result<T, Error> {
         match self {
             Expr::Literal { value } => visitor.visit_literal_expr(value),
             Expr::Unary { operator, right } => visitor.visit_unary_expr(self),
             Expr::Binary { left, operator, right } => visitor.visit_binary_expr(self),
             Expr::Grouping { expression } => visitor.visit_grouping_expr(self),
+            Expr::Variable { name } => visitor.visit_variable_expr(self),
+            Expr::Assign { name, value } => visitor.visit_assign_expr(self),
+            Expr::Logical { left, operator, right } => visitor.visit_logic_expr(self),
         }
     }
 }
@@ -69,6 +81,9 @@ impl fmt::Display for Expr {
             Expr::Unary { operator, right } => write!(f, "({} {})", operator, right),
             Expr::Binary { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
             Expr::Grouping { expression } => write!(f, "({})", expression),
+            Expr::Variable { name } => write!(f, "{}", name.lexeme),
+            Expr::Assign { name, value } => write!(f, "({} = {})", name.lexeme, value),
+            Expr::Logical { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
         }
     }
 }
@@ -92,7 +107,7 @@ impl Default for AstPrinter {
     }
 }
 
-impl Visitor<String> for AstPrinter {
+impl expr::Visitor<String> for AstPrinter {
     fn visit_literal_expr(&mut self, value: &Literal) -> Result<String, Error> {
         Ok(format!("{}", value))
     }
@@ -125,6 +140,32 @@ impl Visitor<String> for AstPrinter {
                 Ok(format!("({})", expression))
             }
             _ => Err(Error::new("Expected grouping expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_variable_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Variable { name } => {
+                Ok(name.lexeme.to_string())
+            }
+            _ => Err(Error::new("Expected variable expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_assign_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Assign { name, value }  => {
+                Ok(format!("({} = {})", name.lexeme, value.accept(self)?))
+            }
+            _ => Err(Error::new("Expected assign expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_logic_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Logical { left, operator, right } => {
+                let left = left.accept(self)?;
+                let right = right.accept(self)?;
+                Ok(format!("({} {} {})", left, operator, right))
+            }
+            _ => Err(Error::new("Expected logic expression", ErrorType::SyntaxError)),
         }
     }
 }

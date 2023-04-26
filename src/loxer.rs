@@ -6,21 +6,31 @@ use std::fs;
 use rustyline::error::ReadlineError;
 use rustyline::{DefaultEditor, Result};
 
+#[derive(PartialEq)]
+pub enum MODE {
+    PROMPT,
+    FILE,
+}
+
 pub struct Loxer {
     had_error: bool, 
+    interpreter: Interpreter,
 }
 
 impl Loxer {
     pub fn new() -> Self {
-        Self {had_error: false}
+        Self {
+            had_error: false,
+            interpreter: Interpreter::new(),
+        }
     }
 
     /// Execute the source code
-    pub fn run (&self, source: &str) {
+    pub fn run (&mut self, source: &str, mode: MODE) {
         info!("Running source code: {}", source);
         let mut scanner = Scanner::new(source);
         scanner.scan_tokens();
-       let tokens = &scanner.tokens;
+        let tokens = &scanner.tokens;
 
         if scanner.had_error {
             scanner.report_errors();
@@ -28,23 +38,33 @@ impl Loxer {
         }
 
         let mut parser = Parser::new(tokens);
-        let res = parser.parse();
+        let stmts = parser.parse();
 
-        if let Ok(expr) = res {
-            info!("Parsed expression: {}", expr);
-            let mut interpreter = Interpreter::new();
+        if let Ok(expr) = stmts {
+            info!("Parsed expression: {:?}", expr);
+            // let mut interpreter = Interpreter::new();
             
-            let res = interpreter.interpret(&expr);
-            if let Ok(value) = res {
-                println!("{}", value);
+            let res = self.interpreter.interpret(&expr);
+            if let Ok(()) = res {
+
             } else {
-                let error = res.err().unwrap();
-                log::error!("{}", error.message);
+                // let error = res.err().unwrap();
+                // log::error!("{}", error.message);
+
+                // Runtime error
+                if mode == MODE::FILE {
+                    std::process::exit(70);
+                }
             }
 
         } else {
-            let error = res.err().unwrap();
-            log::error!("Error parsing expression: {:?}", error);
+            // let error = stmts.err().unwrap();
+            // log::error!("Error parsing expression: {:?}", error);
+
+            // Compiler error
+            if mode == MODE::FILE {
+                std::process::exit(65);
+            }
         }
          
     }
@@ -69,7 +89,7 @@ impl Loxer {
                     if line.is_empty() {
                         continue;
                     }
-                    self.run(line.as_str());
+                    self.run(line.as_str(), MODE::PROMPT);
                     self.had_error = false; // Reset error flag
                 }
                 Err(ReadlineError::Interrupted) => {
@@ -89,10 +109,11 @@ impl Loxer {
         Ok(())
     }
 
-    pub fn run_file(&self, path: &str) {
+    pub fn run_file(&mut self, path: &str) {
+        info!("Running file: {}", path);
         let source = fs::read_to_string(path)
             .expect("Could not read file");
-        self.run(source.as_str());
+        self.run(source.as_str(), MODE::FILE);
     }
 }
 
@@ -113,7 +134,7 @@ mod test {
     fn test_run() {
         set_logger();
         info!("Running test_run())");
-        let loxer = Loxer::new();
-        loxer.run("1+2*(3*4 - 6 / 2)");
+        let mut loxer = Loxer::new();
+        loxer.run("1+2*(3*4 - 6 / 2);", MODE::PROMPT);
     }
 }

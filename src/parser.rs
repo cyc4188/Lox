@@ -1,3 +1,5 @@
+use std::vec;
+
 use super::*;
 use TokenType::*;
 
@@ -20,33 +22,282 @@ macro_rules! matches {
     };
 }
 
-///expression     → equality ;
+/// program        → declaration* EOF ;
+/// declaration    → varDecl
+///                 | statement ;
+/// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+/// statement      → exprStmt
+///                | ifStmt 
+///                | printStmt 
+///                | block 
+///                | whileStmt
+///                | forStmt ;
+/// exprStmt       → expression ";" ;
+/// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
+/// printStmt      → "print" expression ";" ;
+/// block          | "{" declaration* "}" ;
+/// whileStmt      | "while" "(" expression ")" statement ;
+/// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
+///                         expression? ";"
+///                         expression? ")" statement ; 
+/// expression     → assignment ;
+/// assignment     → IDENTIFIER "=" assignment
+///                | logicOr ;
+/// logicOr        → logicAnd ( "or" logicAnd )* ;
+/// logicAnd       → equality ( "and" equality )* ;
 /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 /// term           → factor ( ( "-" | "+" ) factor )* ;
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
-///                | primary ;
+///                | call ;
+/// call           → primary ( "(" arguments? ")" )* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
-///                | "(" expression ")" ;
+///                | "(" expression ")"
+///                | IDENTIFIER ;
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
 
-
-// expression parser[
-// ------------------------------------------------
-// ------------------------------------------------
-
-    pub fn parse(&mut self) -> Result<Expr, Error> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, Error> {
+        let mut stmts: Vec<Stmt> = Vec::new();
+        while !self.is_end() {
+            let stmt = self.declaration()?;
+            stmts.push(stmt);
+        }
+        Ok(stmts)
     }
 
+    // statement parser
+
+    /// declaration    → varDecl
+    ///                 | statement ;
+    fn declaration(&mut self) -> Result<Stmt, Error> {
+        let res: Result<Stmt, Error> = if matches!(self, Var) {
+            self.var_decl()
+        } else {
+            self.statement()
+        };
+
+        if res.is_err() {
+            self.synchronize();
+        }
+
+        res
+    }
+
+    /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+    fn var_decl(&mut self) -> Result<Stmt, Error> {
+        let name = self.consume(Identifier, "Expect variable name.")?.clone();
+
+        let mut initializer: Option<Expr> = None;
+
+        if matches!(self, Equal) {
+            initializer = Some(self.expression()?);
+        }
+
+        self.consume(Semicolon, "Expect ';' after variable declaration.")?;
+
+        Ok(Stmt::VarStmt { name, initializer })
+    }
+
+    /// statement      → exprStmt
+    ///                | ifStmt ;
+    ///                | printStmt ;
+    ///                | block ;
+    ///                | whileStmt
+    fn statement(&mut self) -> Result<Stmt, Error> {
+        // printStmt
+        if matches!(self, Print) {
+            return self.print_statement();
+        }
+
+        // block
+        if matches!(self, LeftBrace) {
+            return self.block_statement();
+        }
+
+        // ifStmt
+        if matches!(self, If) {
+            return self.if_statement();
+        }
+
+        // whileStmt
+        if matches!(self, While) {
+            return self.while_statement();
+        }
+
+        // forStmt
+        if matches!(self, For) {
+            return self.for_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    /// exprStmt       → expression ";" ;
+    fn expression_statement(&mut self) -> Result<Stmt, Error> {
+        let expr = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after value.")?;
+
+        Ok(Stmt::ExprStmt { expression: expr })
+    }
+
+    /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
+    fn if_statement(&mut self) -> Result<Stmt, Error> {
+        self.consume(LeftParen, "Expect '(' after 'if'.")?;
+        let condition_expr = self.expression()?;
+        self.consume(RightParen, "Expect ')' after if condition.")?;
+        let branch_stmt = self.statement()?;
+        let mut else_stmt: Option<Box<Stmt>> = None;
+        if matches!(self, Else) {
+            else_stmt = Some(Box::new(self.statement()?));
+        }
+
+        Ok(Stmt::IfStmt {
+            condition: condition_expr,
+            then_branch: Box::new(branch_stmt),
+            else_branch: else_stmt,
+        })
+    }
+
+    /// printStmt      → "print" expression ";" ;
+    fn print_statement(&mut self) -> Result<Stmt, Error> {
+        let expr = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after value.")?;
+
+        Ok(Stmt::PrintStmt { expression: expr })
+    }
+
+    /// block          | "{" declaration* "}" ;
+    fn block_statement(&mut self) -> Result<Stmt, Error> {
+        let mut stmts: Vec<Stmt> = Vec::new();
+        while !self.check(RightBrace) && !self.is_end() {
+            let stmt = self.declaration()?;
+            stmts.push(stmt);
+        }
+
+        self.consume(RightBrace, "Expect '}' after block")?;
+
+        Ok(Stmt::BlockStmt { statements: stmts })
+    }
+
+    /// whileStmt      | "while" "(" expression ")" statement ;
+    fn while_statement(&mut self) -> Result<Stmt, Error> {
+        self.consume(LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(RightParen, "Expect ')' after condition.")?;
+        let body = self.statement()?;
+        Ok(Stmt::WhileStmt {
+            condition,
+            body: Box::new(body),
+        })
+    }
+
+    /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
+    ///                         expression? ";"
+    ///                         expression? ")" statement ; 
+    fn for_statement(&mut self) -> Result<Stmt, Error> {
+        // 语法脱糖, convert to while loop
+        self.consume(LeftParen, "Expect '(' after 'for'.")?;
+
+        let initializer: Option<Stmt> = if matches!(self, Semicolon) {
+            None
+        } else if matches!(self, Var) {
+            Some(self.var_decl()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition: Expr = if self.check(Semicolon) {
+            Expr::Literal { value: Literal::Boolean(true) }
+        } else {
+            self.expression()?
+        };
+        self.consume(Semicolon, "Expect ';' after loop condition.")?;
+
+        let increment: Option<Expr> = if self.check(RightParen) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+        self.consume(RightParen, "Expect ')' after for clauses.")?;
+        
+        let mut body = self.statement()?;
+
+        if let Some(increment) =increment  {
+            body = Stmt::BlockStmt { statements: vec![body, Stmt::ExprStmt { expression: increment }] };
+        }
+
+        body = Stmt::WhileStmt { condition, body: Box::new(body) };
+
+        if let Some(initializer) = initializer {
+            body = Stmt::BlockStmt { statements: vec![initializer, body] };
+        }
+
+        Ok(body)
+    }   
+
+    // ------------------------------------------------
+    // ------------------------------------------------
+    // expression parser
+
+    /// expression     → assignment ;
     fn expression(&mut self) -> Result<Expr, Error> {
-        self.equality()
+        self.assignment()
     }
-    
+
+    /// assignment     → IDENTIFIER "=" assignment
+    ///                | equality ;
+    fn assignment(&mut self) -> Result<Expr, Error> {
+        let expr = self.logic_or();
+
+        if matches!(self, Equal) {
+            let value = self.assignment()?;
+            if let Ok(Expr::Variable { name }) = expr {
+                return Ok(Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                });
+            }
+            return Err(self.error(self.previous(), "Invalid assignment target."));
+        }
+
+        expr
+    }
+
+    fn logic_or(&mut self) -> Result<Expr, Error> {
+        let mut expr = self.logic_and()?;
+        while matches!(self, Or) {
+            let operator = self.previous().clone();
+            let right = self.logic_and()?;
+            let left = expr; // give expr to left
+            expr = Expr::Logical {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            };
+        };
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> Result<Expr, Error> {
+        let mut expr = self.equality()?;
+        while matches!(self, And) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+            let left = expr; // give expr to left
+            expr = Expr::Logical {
+                left: Box::new(left),
+                operator,
+                right: Box::new(right),
+            };
+        };
+        Ok(expr)
+    }
+
+    /// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     fn equality(&mut self) -> Result<Expr, Error> {
         let mut expr = self.comparison()?;
 
@@ -63,6 +314,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     fn comparison(&mut self) -> Result<Expr, Error> {
         let mut expr = self.term()?;
         while matches!(self, Greater, GreaterEqual, Less, LessEqual) {
@@ -78,6 +330,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// term           → factor ( ( "-" | "+" ) factor )* ;
     fn term(&mut self) -> Result<Expr, Error> {
         let mut expr = self.factor()?;
         while matches!(self, Minus, Plus) {
@@ -93,6 +346,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// factor         → unary ( ( "/" | "*" ) unary )* ;
     fn factor(&mut self) -> Result<Expr, Error> {
         let mut expr = self.unary()?;
         while matches!(self, Slash, Star) {
@@ -108,6 +362,8 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// unary          → ( "!" | "-" ) unary
+    ///                | call ;
     fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
@@ -116,49 +372,70 @@ impl<'a> Parser<'a> {
                 operator,
                 right: Box::new(right),
             });
-        } 
+        }
         self.primary()
     }
 
+
+    /// call          → primary ( "(" arguments? ")" )* ;
+    fn call(&mut self) -> Result<Expr, Error> {
+        // TODO
+        unimplemented!()
+    }
+
+    /// primary        → NUMBER | STRING | "true" | "false" | "nil"
+    ///                | "(" expression ")"
+    ///                | IDENTIFIER ;
     fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
-            return Ok(Expr::Literal { value: Literal::Boolean(false) });
+            return Ok(Expr::Literal {
+                value: Literal::Boolean(false),
+            });
         }
         if matches!(self, True) {
-            return Ok(Expr::Literal { value: Literal::Boolean(true) });
+            return Ok(Expr::Literal {
+                value: Literal::Boolean(true),
+            });
         }
 
         if matches!(self, Nil) {
-            return Ok(Expr::Literal { value: Literal::Nil });
+            return Ok(Expr::Literal {
+                value: Literal::Nil,
+            });
         }
 
         if matches!(self, Number, String) {
-            return Ok(
-                Expr::Literal { 
-                    value: self.previous().literal.clone()
-                    }
-                )
+            return Ok(Expr::Literal {
+                value: self.previous().literal.clone(),
+            });
+        }
+
+        if matches!(self, Identifier) {
+            return Ok(Expr::Variable {
+                name: self.previous().clone(),
+            });
         }
 
         if matches!(self, LeftParen) {
             let expr = self.expression()?;
-            
+
             self.consume(RightParen, "Expect ')' after expression.")?;
 
-            return Ok(Expr::Grouping { expression: Box::new(expr) });
+            return Ok(Expr::Grouping {
+                expression: Box::new(expr),
+            });
         }
-        Err(self.error(self.peak(), "Expect expression"))
+        Err(self.error(self.peak(), "Expect expression."))
         // Err(Error {
         //     message: "Expect expression".to_string(),
         //     error_type: ErrorType::SyntaxError
         // })
     }
 
+    // expression parser
+    // ------------------------------------------------
+    // ------------------------------------------------
 
-// expression parser]
-// ------------------------------------------------
-// ------------------------------------------------
-    
     fn peak(&self) -> &Token {
         &self.tokens[self.current]
     }
@@ -178,7 +455,7 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
 
-    fn check(&mut self, token_type: TokenType) -> bool {
+    fn check(&self, token_type: TokenType) -> bool {
         if self.is_end() {
             return false;
         }
@@ -206,7 +483,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // until we reach a semicolon or a statement keyword
+    // until we reach a semicolon ';' or a statement keyword
     fn synchronize(&mut self) {
         self.advance();
 
@@ -223,6 +500,4 @@ impl<'a> Parser<'a> {
             self.advance();
         }
     }
-
 }
-
