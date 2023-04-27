@@ -26,7 +26,7 @@ pub use statement::*;
 pub use env::*;
 pub use function::*;
 
-pub use log::{info, debug};
+pub use log::{info, debug, trace};
 
 #[macro_use]
 extern crate enum_display_derive;

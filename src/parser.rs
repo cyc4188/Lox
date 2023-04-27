@@ -24,7 +24,10 @@ macro_rules! matches {
 
 /// program        → declaration* EOF ;
 /// declaration    → varDecl
+///                 | funDecl
 ///                 | statement ;
+/// funDecl        → "fun" function ;
+/// function       → IDENTIFIER "(" parameters? ")" block ;
 /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 /// statement      → exprStmt
 ///                | ifStmt 
@@ -56,6 +59,7 @@ macro_rules! matches {
 ///                | "(" expression ")"
 ///                | IDENTIFIER ;
 /// arguments      | expression ( "," expression )* ;
+/// parameters     | IDENTIFIER ( "," IDENTIFIER )* ;
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -77,7 +81,10 @@ impl<'a> Parser<'a> {
     fn declaration(&mut self) -> Result<Stmt, Error> {
         let res: Result<Stmt, Error> = if matches!(self, Var) {
             self.var_decl()
-        } else {
+        } else if matches!(self, Fun) {
+            self.function("function")
+        }
+        else {
             self.statement()
         };
 
@@ -103,6 +110,30 @@ impl<'a> Parser<'a> {
         Ok(Stmt::VarStmt { name, initializer })
     }
 
+    /// funDecl        → "fun" function ;
+    /// function       → IDENTIFIER "(" parameters? ")" block ;
+    fn function(&mut self, kind: &str) -> Result<Stmt, Error> {
+        let name = self.consume(Identifier, "Expect function name.")?.clone();
+        self.consume(LeftParen, "Expect '(' after function name.")?;
+        let mut parameters: Vec<Token> = Vec::new();
+        if !self.check(RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    return Err(self.error(self.peak(), "Can't have more than 255 parameters."));
+                }
+                parameters.push(self.consume(Identifier, "Expect parameter name.")?.clone());
+                if !matches!(self, Comma) {
+                    break;
+                }
+            }
+        } 
+        self.consume(RightParen, "Expect ')' after parameters.")?;
+        self.consume(LeftBrace, format!("Expect '{{' before {} body.", kind).as_str())?;
+        let body = self.block_statement()?;
+
+        Ok(Stmt::FunStmt { name, params: parameters, body })
+    }
+
     /// statement      → exprStmt
     ///                | ifStmt ;
     ///                | printStmt ;
@@ -116,7 +147,7 @@ impl<'a> Parser<'a> {
 
         // block
         if matches!(self, LeftBrace) {
-            return self.block_statement();
+            return Ok(Stmt::BlockStmt { statements: self.block_statement()? });
         }
 
         // ifStmt
@@ -172,7 +203,7 @@ impl<'a> Parser<'a> {
     }
 
     /// block          | "{" declaration* "}" ;
-    fn block_statement(&mut self) -> Result<Stmt, Error> {
+    fn block_statement(&mut self) -> Result<Vec<Stmt>, Error> {
         let mut stmts: Vec<Stmt> = Vec::new();
         while !self.check(RightBrace) && !self.is_end() {
             let stmt = self.declaration()?;
@@ -181,7 +212,7 @@ impl<'a> Parser<'a> {
 
         self.consume(RightBrace, "Expect '}' after block")?;
 
-        Ok(Stmt::BlockStmt { statements: stmts })
+        Ok(stmts)
     }
 
     /// whileStmt      | "while" "(" expression ")" statement ;
@@ -473,10 +504,13 @@ impl<'a> Parser<'a> {
         if self.check(token_type) {
             return Ok(self.advance());
         }
-        Err(Error {
-            message: message.to_string(),
-            error_type: ErrorType::SyntaxError,
-        })
+        Err(
+            self.error(self.peak(), message)
+        )
+        // Err(Error {
+        //     message: message.to_string(),
+        //     error_type: ErrorType::SyntaxError,
+        // })
     }
 
     pub fn error(&self, token: &Token, message: &str) -> Error {

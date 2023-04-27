@@ -48,8 +48,8 @@ impl Loxer {
             if let Ok(()) = res {
 
             } else {
-                // let error = res.err().unwrap();
-                // log::error!("{}", error.message);
+                let error = res.err().unwrap();
+                eprintln!("runtime error: {}", error.message);
 
                 // Runtime error
                 if mode == MODE::FILE {
@@ -58,10 +58,7 @@ impl Loxer {
             }
 
         } else {
-            // let error = stmts.err().unwrap();
-            // log::error!("Error parsing expression: {:?}", error);
-
-            // Compiler error
+            // Parse error
             if mode == MODE::FILE {
                 std::process::exit(65);
             }

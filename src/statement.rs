@@ -10,6 +10,7 @@ pub mod stmt {
         fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
+        fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
     }
 }
 
@@ -50,19 +51,24 @@ pub enum Stmt {
     WhileStmt {
         condition: Expr,
         body: Box<Stmt>,
+    },
+    FunStmt {
+        name: Token,
+        params: Vec<Token>,
+        body: Vec<Stmt>,
     }
 }
 
 impl Stmt {
-    #[allow(unused_variables)]
     pub fn accept<T>(&self, visitor: &mut impl stmt::Visitor<T>) -> Result<T, Error> {
         match self {
-            Stmt::ExprStmt { expression } => visitor.visit_expr_stmt(self),
-            Stmt::IfStmt { condition, then_branch, else_branch } => visitor.visit_if_stmt(self),
-            Stmt::PrintStmt { expression } => visitor.visit_print_stmt(self), 
-            Stmt::VarStmt { name, initializer } => visitor.visit_var_stmt(self),
-            Stmt::BlockStmt { statements } => visitor.visit_block_stmt(self),
-            Stmt::WhileStmt { condition, body } => visitor.visit_while_stmt(self),
+            Stmt::ExprStmt { .. } => visitor.visit_expr_stmt(self),
+            Stmt::IfStmt { .. } => visitor.visit_if_stmt(self),
+            Stmt::PrintStmt { .. } => visitor.visit_print_stmt(self), 
+            Stmt::VarStmt { .. } => visitor.visit_var_stmt(self),
+            Stmt::BlockStmt {.. } => visitor.visit_block_stmt(self),
+            Stmt::WhileStmt { .. } => visitor.visit_while_stmt(self),
+            Stmt::FunStmt { .. } => visitor.visit_func_stmt(self),
         }
     }
 }

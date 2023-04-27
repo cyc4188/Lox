@@ -4,26 +4,24 @@ use super::*;
 
 pub struct Interpreter {
     environment: EnvironmentRef,
-    globals: EnvironmentRef,
+    pub globals: EnvironmentRef,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         let globals = Rc::new(RefCell::new(Environment::new(None)));
 
-        let clock: Object = Object::Callable(
-            Function::Native {
-                arity: 0,
-                body: Box::new(
-                    |_: &Vec<Object>| -> Object {
-                        Object::Number(std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs_f64())
-                    },
-                ),
-            }
-        );
+        let clock: Object = Object::Callable(Function::Native {
+            arity: 0,
+            body: Box::new(|_: &Vec<Object>| -> Object {
+                Object::Number(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs_f64(),
+                )
+            }),
+        });
         globals.borrow_mut().define(&"clock".to_string(), clock);
 
         Self {
@@ -45,6 +43,24 @@ impl Interpreter {
 
     pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Error> {
         stmt.accept(self)
+    }
+
+    pub fn execute_block(
+        &mut self,
+        stmts: &Vec<Stmt>,
+        environment: EnvironmentRef,
+    ) -> Result<(), Error> {
+        let previous = self.environment.clone();
+        self.environment = environment;
+        let mut steps = || -> Result<(), Error> {
+            for statement in stmts {
+                self.execute(statement)?;
+            }
+            Ok(())
+        };
+        let result = steps();
+        self.environment = previous;
+        result
     }
 
     fn number_operand_error(&self, operator: &Token) -> Result<Object, Error> {
@@ -239,6 +255,7 @@ impl expr::Visitor<Object> for Interpreter {
     }
 
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        trace!("visit_call_expr");
         match expr {
             Expr::Call {
                 callee,
@@ -255,6 +272,8 @@ impl expr::Visitor<Object> for Interpreter {
                 // check if callee is a function
                 if let Object::Callable(function) = callee {
                     // check if number of arguments matches number of parameters
+                    trace!("function arity: {}", function.arity(), );
+                    trace!("args.len: {}", args.len());
                     if function.arity() != args.len() {
                         return Err(Error {
                             message: format!(
@@ -325,21 +344,7 @@ impl stmt::Visitor<()> for Interpreter {
                     self.environment.clone(),
                 ))));
 
-                self.environment = sub_env.clone();
-
-                // iterate through the statements and execute them
-                let mut steps = || -> Result<(), Error> {
-                    for statement in statements {
-                        self.execute(statement)?;
-                    }
-                    Ok(())
-                };
-                let result = steps();
-
-                // remove the scope
-                self.environment = sub_env.borrow().enclosing.clone().unwrap();
-
-                result
+                self.execute_block(statements, sub_env)
             }
             _ => unreachable!(),
         }
@@ -369,6 +374,25 @@ impl stmt::Visitor<()> for Interpreter {
                 while Interpreter::is_truthy(&self.evaluate(condition)?) {
                     self.execute(body)?;
                 }
+                Ok(())
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::FunStmt { name, params, body } => {
+                let function = Object::Callable(Function::UserDefined {
+                    name: name.clone(),
+                    params: params.clone(),
+                    body: body.clone(),
+                });
+
+                self.environment
+                .borrow_mut()
+                .define(&name.lexeme, function);
+
                 Ok(())
             }
             _ => unreachable!(),
