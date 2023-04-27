@@ -11,6 +11,7 @@ pub mod expr {
         fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -55,7 +56,12 @@ pub enum Expr {
         left: Box<Expr>,
         operator: Token,
         right: Box<Expr>,
-    }
+    },
+    Call {
+        callee: Box<Expr>,
+        paren: Token,
+        arguments: Vec<Expr>,
+    },
 }
 
 
@@ -70,11 +76,13 @@ impl Expr {
             Expr::Variable { name } => visitor.visit_variable_expr(self),
             Expr::Assign { name, value } => visitor.visit_assign_expr(self),
             Expr::Logical { left, operator, right } => visitor.visit_logic_expr(self),
+            Expr::Call { callee, paren, arguments } => visitor.visit_call_expr(self),
         }
     }
 }
 
 impl fmt::Display for Expr {
+    #[allow(unused_variables)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Literal { value } => write!(f, "{}", value),
@@ -84,6 +92,10 @@ impl fmt::Display for Expr {
             Expr::Variable { name } => write!(f, "{}", name.lexeme),
             Expr::Assign { name, value } => write!(f, "({} = {})", name.lexeme, value),
             Expr::Logical { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
+            Expr::Call { callee, paren, arguments } => {
+                // println!("{}", self.accept(&mut AstPrinter).unwrap());
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
         }
     }
 }
@@ -166,6 +178,16 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(format!("({} {} {})", left, operator, right))
             }
             _ => Err(Error::new("Expected logic expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_call_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Call { callee, paren, arguments } => {
+                let callee = callee.accept(self)?;
+                let arguments = arguments.iter().map(|arg| arg.accept(self)).collect::<Result<Vec<String>, Error>>()?;
+                Ok(format!("({} {} {})", callee, paren, arguments.join(" ")))
+            }
+            _ => Err(Error::new("Expected call expression", ErrorType::SyntaxError)),
         }
     }
 }

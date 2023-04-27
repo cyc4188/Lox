@@ -1,10 +1,13 @@
 use std::fmt::Display;
 
+use crate::Function;
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Number(f64),
     String(String),
     Boolean(bool),
+    Callable(Function),
     Nil,
 }
 
@@ -15,6 +18,7 @@ impl Display for Object {
             Object::String(s) => write!(f, "\"{}\"", s),
             Object::Boolean(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
+            Object::Callable(_) => write!(f, "<callable>")
         }
     }
 }

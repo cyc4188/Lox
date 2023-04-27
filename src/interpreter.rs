@@ -1,16 +1,34 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
 use super::*;
 
 pub struct Interpreter {
     environment: EnvironmentRef,
+    globals: EnvironmentRef,
 }
 
 impl Interpreter {
-
     pub fn new() -> Self {
+        let globals = Rc::new(RefCell::new(Environment::new(None)));
+
+        let clock: Object = Object::Callable(
+            Function::Native {
+                arity: 0,
+                body: Box::new(
+                    |_: &Vec<Object>| -> Object {
+                        Object::Number(std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs_f64())
+                    },
+                ),
+            }
+        );
+        globals.borrow_mut().define(&"clock".to_string(), clock);
+
         Self {
-            environment: Rc::new(RefCell::new(Environment::new(None))),
+            environment: globals.clone(),
+            globals,
         }
     }
 
@@ -30,12 +48,10 @@ impl Interpreter {
     }
 
     fn number_operand_error(&self, operator: &Token) -> Result<Object, Error> {
-        Err(
-            Error {
-                message: format!("Operand of {} must be a number.", operator.token_type),
-                error_type: ErrorType::RuntimeError(operator.clone()),
-            }
-        )
+        Err(Error {
+            message: format!("Operand of {} must be a number.", operator.token_type),
+            error_type: ErrorType::RuntimeError(operator.clone()),
+        })
     }
 
     fn is_truthy(object: &Object) -> bool {
@@ -56,6 +72,7 @@ impl Interpreter {
             Object::Boolean(b) => b.to_string(),
             Object::Number(n) => n.to_string(),
             Object::String(s) => s.clone(),
+            Object::Callable(function) => function.to_string(),
         }
     }
 }
@@ -73,7 +90,7 @@ impl expr::Visitor<Object> for Interpreter {
         match expr {
             Expr::Unary { operator, right } => {
                 let right = self.evaluate(right)?;
-                
+
                 // -, !
                 match operator.token_type {
                     TokenType::Minus => {
@@ -87,60 +104,69 @@ impl expr::Visitor<Object> for Interpreter {
                     _ => unreachable!(),
                 }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_binary_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Binary { left, operator, right } => {
+            Expr::Binary {
+                left,
+                operator,
+                right,
+            } => {
                 let left = self.evaluate(left)?;
                 let right = self.evaluate(right)?;
                 match operator.token_type {
                     TokenType::Minus => match (left, right) {
-                            (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l - r)),
-                            _ => self.number_operand_error(operator)
-                    }
+                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l - r)),
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::Plus => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l + r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::String(l + &r)),
-                        _ => Err(
-                            Error {
-                                message: format!("Operands of {} must be two numbers or two strings.", operator.token_type),
-                                error_type: ErrorType::RuntimeError(operator.clone()),
-                            }
-                        )
-                    }
+                        _ => Err(Error {
+                            message: format!(
+                                "Operands of {} must be two numbers or two strings.",
+                                operator.token_type
+                            ),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        }),
+                    },
                     TokenType::Slash => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l / r)),
-                        _ => self.number_operand_error(operator)
-                    }
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::Star => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l * r)),
-                        _ => self.number_operand_error(operator)
-                    }
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::Greater => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l > r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l > r)),
-                        _ => self.number_operand_error(operator)
-                    }
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::GreaterEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l >= r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l >= r)),
-                        _ => self.number_operand_error(operator)
-                    }
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::Less => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l < r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l < r)),
-                        _ => self.number_operand_error(operator)
-                    }
+                        _ => self.number_operand_error(operator),
+                    },
                     TokenType::LessEqual => match (left, right) {
                         (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l <= r)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l <= r)),
-                        _ => self.number_operand_error(operator)
+                        _ => self.number_operand_error(operator),
+                    },
+                    TokenType::BangEqual => {
+                        Ok(Object::Boolean(!Interpreter::is_equal(&left, &right)))
                     }
-                    TokenType::BangEqual => Ok(Object::Boolean(!Interpreter::is_equal(&left, &right))),
 
-                    TokenType::EqualEqual => Ok(Object::Boolean(Interpreter::is_equal(&left, &right))),
+                    TokenType::EqualEqual => {
+                        Ok(Object::Boolean(Interpreter::is_equal(&left, &right)))
+                    }
 
                     TokenType::And => {
                         if !Interpreter::is_truthy(&left) {
@@ -150,10 +176,10 @@ impl expr::Visitor<Object> for Interpreter {
                         }
                     }
 
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
     fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
@@ -164,55 +190,92 @@ impl expr::Visitor<Object> for Interpreter {
     }
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Variable { name } => {
-                match self.environment.borrow().get(name.lexeme.as_str()) {
-                    Some(value) => Ok(value),
-                    None => Err(
-                        Error {
-                            message: format!("Undefined variable '{}'.", name.lexeme),
-                            error_type: ErrorType::RuntimeError(name.clone()),
-                        }
-                    )
-                }
-            }
-            _ => unreachable!()
+            Expr::Variable { name } => match self.environment.borrow().get(name.lexeme.as_str()) {
+                Some(value) => Ok(value),
+                None => Err(Error {
+                    message: format!("Undefined variable '{}'.", name.lexeme),
+                    error_type: ErrorType::RuntimeError(name.clone()),
+                }),
+            },
+            _ => unreachable!(),
         }
     }
-    
+
     fn visit_assign_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Assign { name, value }  => {
+            Expr::Assign { name, value } => {
                 let value = self.evaluate(value)?;
                 self.environment.borrow_mut().assign(name, &value)?;
                 return Ok(value);
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     fn visit_logic_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Logical { left, operator, right } => {
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => {
                 let left_value = self.evaluate(left)?;
                 if operator.token_type == TokenType::Or {
                     if Interpreter::is_truthy(&left_value) {
                         return Ok(left_value);
-                    }
-                    else {
+                    } else {
                         return Ok(self.evaluate(right)?);
                     }
-                }
-                else {
+                } else {
                     if Interpreter::is_truthy(&left_value) {
                         return Ok(self.evaluate(right)?);
-                    }
-                    else {
+                    } else {
                         return Ok(left_value);
                     }
                 }
             }
-            _ => unreachable!()
-        } 
+            _ => unreachable!(),
+        }
+    }
+
+    fn visit_call_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Call {
+                callee,
+                paren,
+                arguments,
+            } => {
+                let callee = self.evaluate(callee)?;
+
+                let mut args = Vec::new();
+                for arg in arguments {
+                    args.push(self.evaluate(arg)?);
+                }
+
+                // check if callee is a function
+                if let Object::Callable(function) = callee {
+                    // check if number of arguments matches number of parameters
+                    if function.arity() != args.len() {
+                        return Err(Error {
+                            message: format!(
+                                "Expected {} arguments but got {}.",
+                                function.arity(),
+                                args.len()
+                            ),
+                            error_type: ErrorType::RuntimeError(paren.clone()),
+                        });
+                    }
+                    // call function
+                    Ok(function.call(self, &args)?)
+                } else {
+                    return Err(Error {
+                        message: format!("Can only call functions and classes."),
+                        error_type: ErrorType::RuntimeError(paren.clone()),
+                    });
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -222,7 +285,7 @@ impl stmt::Visitor<()> for Interpreter {
             Stmt::ExprStmt { expression } => {
                 self.evaluate(expression)?;
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
 
         Ok(())
@@ -234,7 +297,7 @@ impl stmt::Visitor<()> for Interpreter {
                 let value = self.evaluate(expression)?;
                 println!("{}", Interpreter::stringify(&value));
             }
-            _ => unreachable!() 
+            _ => unreachable!(),
         }
 
         Ok(())
@@ -248,20 +311,22 @@ impl stmt::Visitor<()> for Interpreter {
                     None => Object::Nil,
                 };
                 self.environment.borrow_mut().define(&name.lexeme, value);
-            } 
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::BlockStmt { statements }  => {
+            Stmt::BlockStmt { statements } => {
                 // create a new scope
-                let sub_env = Rc::new(RefCell::new(Environment::new(Some(self.environment.clone()))));
+                let sub_env = Rc::new(RefCell::new(Environment::new(Some(
+                    self.environment.clone(),
+                ))));
 
                 self.environment = sub_env.clone();
-                
+
                 // iterate through the statements and execute them
                 let mut steps = || -> Result<(), Error> {
                     for statement in statements {
@@ -276,13 +341,17 @@ impl stmt::Visitor<()> for Interpreter {
 
                 result
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     fn visit_if_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::IfStmt { condition, then_branch, else_branch } => {
+            Stmt::IfStmt {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 if Interpreter::is_truthy(&self.evaluate(condition)?) {
                     self.execute(then_branch)?;
                 } else if let Some(else_branch) = else_branch {
@@ -290,19 +359,19 @@ impl stmt::Visitor<()> for Interpreter {
                 }
                 Ok(())
             }
-            _ => unreachable!()
-        } 
+            _ => unreachable!(),
+        }
     }
 
     fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::WhileStmt { condition, body }  => {
+            Stmt::WhileStmt { condition, body } => {
                 while Interpreter::is_truthy(&self.evaluate(condition)?) {
                     self.execute(body)?;
                 }
                 Ok(())
             }
-            _ => unreachable!()
-        } 
+            _ => unreachable!(),
+        }
     }
 }

@@ -55,6 +55,7 @@ macro_rules! matches {
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER ;
+/// arguments      | expression ( "," expression )* ;
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -373,14 +374,17 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             });
         }
-        self.primary()
+        self.call()
     }
 
 
     /// call          → primary ( "(" arguments? ")" )* ;
     fn call(&mut self) -> Result<Expr, Error> {
-        // TODO
-        unimplemented!()
+        let mut expr = self.primary()?;
+        while matches!(self, LeftParen) {
+            expr = self.finish_call(expr)?;
+        }
+        Ok(expr)
     }
 
     /// primary        → NUMBER | STRING | "true" | "false" | "nil"
@@ -499,5 +503,26 @@ impl<'a> Parser<'a> {
 
             self.advance();
         }
+    }
+
+    fn finish_call(&mut self, expr: Expr) -> Result<Expr, Error> {
+        let mut arguments: Vec<Expr> = Vec::new();
+        if !self.check(RightParen) {
+            loop {
+                if arguments.len() >= 255 {
+                    return Err(self.error(self.peak(), "Can't have more than 255 arguments."));
+                }
+                arguments.push(self.expression()?);
+                if !matches!(self, Comma) {
+                    break;
+                }
+            }
+        }
+        self.consume(RightParen, "Expect ')' after arguments.")?;
+        Ok(Expr::Call {
+            callee: Box::new(expr),
+            paren: self.previous().clone(),
+            arguments,
+        })
     }
 }
