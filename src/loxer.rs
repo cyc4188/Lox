@@ -49,7 +49,12 @@ impl Loxer {
 
             } else {
                 let error = res.err().unwrap();
-                eprintln!("runtime error: {}", error.message);
+                if let ErrorType::RuntimeError(token) = error.error_type {
+                    eprintln!("{}",error.message);
+                    eprintln!("[line {}] Error at {}", token.line, token.lexeme);
+                } else {
+                    eprintln!("{}",error.message);
+                }
 
                 // Runtime error
                 if mode == MODE::FILE {
