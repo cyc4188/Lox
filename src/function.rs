@@ -38,12 +38,12 @@ impl Function {
 
                 if let Err(err) = interpreter.execute_block(body, environment) {
                     match err.error_type {
-                        ErrorType::Return(value) => return Ok(value),
+                        ErrorType::Return(value) => Ok(value),
                         _ => Err(err)
                     }
                 }
                 else {
-                    return Ok(Object::Nil);
+                    Ok(Object::Nil)
                 }
             }
         }

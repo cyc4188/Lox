@@ -1,6 +1,6 @@
 
 pub fn set_logger() {
-    if let Err(_) = std::env::var("RUST_LOG") {
+    if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "error");
     }
     // env_logger::init();

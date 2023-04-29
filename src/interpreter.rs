@@ -222,7 +222,7 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Assign { name, value } => {
                 let value = self.evaluate(value)?;
                 self.environment.borrow_mut().assign(name, &value)?;
-                return Ok(value);
+                Ok(value)
             }
             _ => unreachable!(),
         }
@@ -238,17 +238,16 @@ impl expr::Visitor<Object> for Interpreter {
                 let left_value = self.evaluate(left)?;
                 if operator.token_type == TokenType::Or {
                     if Interpreter::is_truthy(&left_value) {
-                        return Ok(left_value);
+                        Ok(left_value)
                     } else {
-                        return Ok(self.evaluate(right)?);
+                        Ok(self.evaluate(right)?)
                     }
+                } else if Interpreter::is_truthy(&left_value) {
+                    Ok(self.evaluate(right)?)
                 } else {
-                    if Interpreter::is_truthy(&left_value) {
-                        return Ok(self.evaluate(right)?);
-                    } else {
-                        return Ok(left_value);
-                    }
+                    Ok(left_value)
                 }
+                
             }
             _ => unreachable!(),
         }
@@ -287,10 +286,10 @@ impl expr::Visitor<Object> for Interpreter {
                     // call function
                     Ok(function.call(self, &args)?)
                 } else {
-                    return Err(Error {
-                        message: format!("Can only call functions and classes."),
+                    Err(Error {
+                        message: "Can only call functions and classes.".to_string(),
                         error_type: ErrorType::RuntimeError(paren.clone()),
-                    });
+                    })
                 }
             }
             _ => unreachable!(),
