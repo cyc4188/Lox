@@ -12,6 +12,7 @@ impl Interpreter {
         let globals = Rc::new(RefCell::new(Environment::new(None)));
 
         let clock: Object = Object::Callable(Function::Native {
+            name: "clock".to_string(), 
             arity: 0,
             body: Box::new(|_: &Vec<Object>| -> Object {
                 Object::Number(

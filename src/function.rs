@@ -12,6 +12,7 @@ use crate::Stmt;
 #[derive(Clone)]
 pub enum Function {
     Native {
+        name: String,
         arity: usize,
         body: Box<fn(&Vec<Object>) -> Object>,
     },
@@ -60,14 +61,25 @@ impl Function {
 impl Debug for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Function::Native { .. } => write!(f, "native <fn>"),
-            Function::UserDefined { name, .. } => write!(f, "user define <fn {}>", name.lexeme),
+            Function::Native { name, .. } => write!(f, "native <fn {}>", name),
+            Function::UserDefined { name, params,.. } => {
+                write!(f, "user define <fn {}({})>", 
+                name.lexeme, 
+                params.iter().map(|param| param.lexeme.clone()).collect::<Vec<String>>().join(", "))
+            }
         }
     }
 }
 
 impl Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<fn>")
+        match self {
+            Function::Native { name, .. } => write!(f, "native <fn {}>", name),
+            Function::UserDefined { name, params,.. } => {
+                write!(f, "user define <fn {}({})>", 
+                name.lexeme, 
+                params.iter().map(|param| param.lexeme.clone()).collect::<Vec<String>>().join(", "))
+            }
+        }
     }
 }
