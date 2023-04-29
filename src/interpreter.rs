@@ -398,4 +398,19 @@ impl stmt::Visitor<()> for Interpreter {
             _ => unreachable!(),
         }
     }
+    fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::ReturnStmt { keyword, value } => {
+                let value = match value {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Object::Nil,
+                };
+                Err(Error {
+                    message: String::from("Return statement"),
+                    error_type: ErrorType::Return(value),
+                })
+            }
+            _ => unreachable!()
+        } 
+    }
 }

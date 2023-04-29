@@ -1,4 +1,4 @@
-use crate::token::{Token, TokenType};
+use crate::{token::{Token, TokenType}, Object};
 
 #[derive(Debug)]
 pub struct Error {
@@ -32,6 +32,7 @@ pub enum ErrorType {
     ScanError(usize),
     SyntaxError,
     RuntimeError(Token),
+    Return(Object)
 }
 
 

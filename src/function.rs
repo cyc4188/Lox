@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use crate::Environment;
+use crate::{Environment, ErrorType};
 use crate::Token;
 use crate::Error;
 use crate::Interpreter;
@@ -35,9 +35,11 @@ impl Function {
                     environment.borrow_mut().define(&param.lexeme, args[i].clone());
                 }
 
-                // TODO: tobe modified to support return statement
                 if let Err(err) = interpreter.execute_block(body, environment) {
-                    return Err(err);
+                    match err.error_type {
+                        ErrorType::Return(value) => return Ok(value),
+                        _ => Err(err)
+                    }
                 }
                 else {
                     return Ok(Object::Nil);

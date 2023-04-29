@@ -34,7 +34,8 @@ macro_rules! matches {
 ///                | printStmt 
 ///                | block 
 ///                | whileStmt
-///                | forStmt ;
+///                | forStmt
+///                | returnStmt ;
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
@@ -43,6 +44,7 @@ macro_rules! matches {
 /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
 ///                         expression? ";"
 ///                         expression? ")" statement ; 
+/// returnStmt     | "return" expression? ";" ;
 /// expression     → assignment ;
 /// assignment     → IDENTIFIER "=" assignment
 ///                | logicOr ;
@@ -164,6 +166,11 @@ impl<'a> Parser<'a> {
         if matches!(self, For) {
             return self.for_statement();
         }
+        
+        // returnStmt
+        if matches!(self, Return) {
+            return self.return_statement();
+        }
 
         self.expression_statement()
     }
@@ -270,6 +277,17 @@ impl<'a> Parser<'a> {
 
         Ok(body)
     }   
+
+    fn return_statement(&mut self) -> Result<Stmt, Error> {
+        let keyword = self.previous().clone();
+        let mut value: Option<Expr> = None;
+        if !self.check(Semicolon) {
+            value = Some(self.expression()?);
+        }
+        self.consume(Semicolon, "Expect ';' after return value.")?;
+
+        Ok(Stmt::ReturnStmt { keyword, value })
+    }
 
     // ------------------------------------------------
     // ------------------------------------------------

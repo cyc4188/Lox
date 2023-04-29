@@ -11,6 +11,7 @@ pub mod stmt {
         fn visit_block_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
+        fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
     }
 }
 
@@ -20,6 +21,7 @@ pub mod stmt {
 ///                | blcok ;
 ///                | whileStmt ;
 ///                | forStmt ;
+///                | returnStmt
 /// exprStmt       → expression ";" ;
 /// ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
 /// printStmt      → "print" expression ";" ;
@@ -28,6 +30,7 @@ pub mod stmt {
 /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
 ///                         expression? ";"
 ///                         expression? ")" statement ; 
+/// returnStmt     | "return" expression? ";" ;
 #[derive(Debug, Clone)]
 pub enum Stmt {
     ExprStmt {
@@ -56,7 +59,11 @@ pub enum Stmt {
         name: Token,
         params: Vec<Token>,
         body: Vec<Stmt>,
-    }
+    },
+    ReturnStmt {
+        keyword: Token,
+        value: Option<Expr>,
+    },
 }
 
 impl Stmt {
@@ -69,6 +76,7 @@ impl Stmt {
             Stmt::BlockStmt {.. } => visitor.visit_block_stmt(self),
             Stmt::WhileStmt { .. } => visitor.visit_while_stmt(self),
             Stmt::FunStmt { .. } => visitor.visit_func_stmt(self),
+            Stmt::ReturnStmt { .. } => visitor.visit_return_stmt(self),
         }
     }
 }
