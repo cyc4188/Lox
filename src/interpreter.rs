@@ -387,6 +387,7 @@ impl stmt::Visitor<()> for Interpreter {
                     name: name.clone(),
                     params: params.clone(),
                     body: body.clone(),
+                    closure: self.environment.clone(),
                 });
 
                 self.environment

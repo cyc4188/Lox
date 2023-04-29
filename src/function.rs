@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use crate::{Environment, ErrorType};
+use crate::{Environment, ErrorType, EnvironmentRef};
 use crate::Token;
 use crate::Error;
 use crate::Interpreter;
@@ -19,6 +19,7 @@ pub enum Function {
         name: Token,
         params: Vec<Token>,
         body: Vec<Stmt>,
+        closure: EnvironmentRef,
     },
 }
 
@@ -26,9 +27,9 @@ impl Function {
     pub fn call(&self, interpreter: &mut Interpreter, args: &Vec<Object>) -> Result<Object, Error> {
         match self {
             Function::Native { body, .. } => Ok(body(args)),
-            Function::UserDefined { name, params, body } => {
+            Function::UserDefined {  params, body , closure,.. } => {
                 // new environment for function call
-                let environment = Rc::new(RefCell::new(Environment::new(Some(interpreter.globals.clone()))));
+                let environment = Rc::new(RefCell::new(Environment::new(Some(closure.clone()))));
 
                 // define parameters
                 for (i, param) in params.iter().enumerate() {
