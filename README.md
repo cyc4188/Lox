@@ -32,7 +32,7 @@ cargo test
 
 - [x] Control Flow
 
-- [ ] Functions
+- [x] Functions
 
 - [ ] Resolving and Binding
 

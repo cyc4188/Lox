@@ -401,7 +401,7 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ReturnStmt { keyword, value } => {
+            Stmt::ReturnStmt {value , ..} => {
                 let value = match value {
                     Some(expr) => self.evaluate(expr)?,
                     None => Object::Nil,
