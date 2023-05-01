@@ -56,4 +56,35 @@ impl Environment {
         }
     }
 
+    fn ancestor(&self, distance: usize) -> EnvironmentRef {
+        let mut parent = self.enclosing.clone().expect("No enclosing environment found.");
+        let mut environment = Rc::clone(&parent);
+        for _ in 1..distance {
+            parent = environment
+            .borrow()
+            .enclosing
+            .clone()
+            .expect("No enclosing environment found.");
+            environment = Rc::clone(&parent);
+        }
+        environment
+    }
+
+    pub fn get_at(&self, distance: usize, name: &String) -> Option<Object> {
+        if distance > 0 {
+            self.ancestor(distance).borrow().get(name)
+        }
+        else {
+            self.get(name)
+        }
+    }
+
+    pub fn assign_at(&mut self, distance: usize, name: &Token, value: &Object) -> Result<(), Error> {
+        if distance > 0 {
+            self.ancestor(distance).borrow_mut().assign(name, value)
+        }
+        else {
+            self.assign(name, value)
+        }
+    }
 }

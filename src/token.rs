@@ -1,20 +1,22 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     pub lexeme: String,
     pub token_type: TokenType,
-    pub literal: Literal,
+    // pub literal: Literal,
     pub line: usize,
+    pub column: usize,
 }
 
 impl Token {
-    pub fn new(lexeme: &str, token_type: TokenType, literal: Literal, line: usize) -> Self {
+    pub fn new(lexeme: &str, token_type: TokenType, literal: Literal, line: usize, column: usize) -> Self {
         Self {
             lexeme: lexeme.to_string(),
             token_type,
-            literal,
+            // literal,
             line,
+            column
         }
     }
     pub fn check_single_character_token(ch: char) -> Option<TokenType> {
@@ -77,7 +79,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Display, Debug, Clone, PartialEq)]
+#[derive(Display, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,

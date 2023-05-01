@@ -457,10 +457,15 @@ impl<'a> Parser<'a> {
             });
         }
 
-        if matches!(self, Number, String) {
+        if matches!(self, String) {
             return Ok(Expr::Literal {
-                value: self.previous().literal.clone(),
+                value: Literal::String(self.previous().lexeme.clone())
             });
+        }
+        if matches!(self, Number) {
+            return Ok(Expr::Literal {
+                value: Literal::Number(self.previous().lexeme.parse::<f64>().unwrap())
+            })
         }
 
         if matches!(self, Identifier) {

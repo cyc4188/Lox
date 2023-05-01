@@ -201,12 +201,12 @@ mod tests {
     fn test_expr() {
         let expr = Expr::Binary {
             left: Box::new(Expr::Unary {
-                operator: Token::new("-", TokenType::Minus, Literal::Nil, 1),
+                operator: Token::new("-", TokenType::Minus, Literal::Nil, 1, 0),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(123.0),
                 }),
             }),
-            operator: Token::new("*", TokenType::Star,  Literal::Nil, 1),
+            operator: Token::new("*", TokenType::Star,  Literal::Nil, 1, 0),
             right: Box::new(Expr::Grouping {
                 expression: Box::new(Expr::Literal {
                     value: Literal::Number(45.67),

@@ -6,6 +6,7 @@ pub struct Scanner {
     start: usize,   // start of current token
     current: usize, // current position in source code
     line: usize,    // current line
+    column: usize,  // current column
     pub tokens: Vec<Token>,
     pub had_error: bool,
     pub errors: Vec<Error>,
@@ -18,6 +19,7 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            column: 1,
             tokens: Vec::new(),
             had_error: false,
             errors: Vec::new(),
@@ -74,6 +76,7 @@ impl Scanner {
             }
             '\n' => {
                 self.line += 1;
+                self.column = 1;
             }
             '"' => { // String
                 self.check_string();
@@ -94,7 +97,13 @@ impl Scanner {
     /// return a token, according to token_type and literal
     fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
         log::trace!("{}", &self.source[self.start..self.current]);
-        Token::new(&self.source[self.start..self.current], token_type, literal, self.line)
+        Token::new(
+            &self.source[self.start..self.current], 
+            token_type, 
+            literal, 
+            self.line,
+            self.column
+        )
     }
 
     /// add a token to the tokens vector
@@ -151,6 +160,7 @@ impl Scanner {
         while self.peak() != '"' && !self.is_end() {
             if self.peak() == '\n' {
                 self.line += 1;
+                self.column = 1;
             }
             self.consume();
         }

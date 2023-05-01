@@ -1,10 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
+use std::collections::HashMap;
 
 use super::*;
 
 pub struct Interpreter {
     environment: EnvironmentRef,
     pub globals: EnvironmentRef,
+    pub locals: HashMap<Token, usize>,
 }
 
 impl Interpreter {
@@ -28,6 +30,7 @@ impl Interpreter {
         Self {
             environment: globals.clone(),
             globals,
+            locals: HashMap::new(),
         }
     }
 
@@ -90,6 +93,30 @@ impl Interpreter {
             Object::Number(n) => n.to_string(),
             Object::String(s) => s.clone(),
             Object::Callable(function) => function.to_string(),
+        }
+    }
+
+    pub fn resolve(&mut self, token: &Token, depth: usize) {
+        self.locals.insert(token.clone(), depth);
+    }
+
+    fn look_up_variable(&self, name: &Token) -> Result<Object, Error> {
+        let result: Option<Object> = match self.locals.get(name) {
+            Some(distance) => {
+                self.environment.borrow().get_at(*distance, &name.lexeme)
+            }
+            None => {
+                self.globals.borrow().get(&name.lexeme)
+            }
+        };
+        if let Some(obj) = result {
+            Ok(obj)
+        }
+        else {
+            Err(Error {
+                message: format!("Undefined variable {}.", name.lexeme),
+                error_type: ErrorType::RuntimeError(name.clone()),
+            })
         }
     }
 }
@@ -207,13 +234,7 @@ impl expr::Visitor<Object> for Interpreter {
     }
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Variable { name } => match self.environment.borrow().get(name.lexeme.as_str()) {
-                Some(value) => Ok(value),
-                None => Err(Error {
-                    message: format!("Undefined variable '{}'.", name.lexeme),
-                    error_type: ErrorType::RuntimeError(name.clone()),
-                }),
-            },
+            Expr::Variable { name } => self.look_up_variable(name),
             _ => unreachable!(),
         }
     }
@@ -222,8 +243,16 @@ impl expr::Visitor<Object> for Interpreter {
         match expr {
             Expr::Assign { name, value } => {
                 let value = self.evaluate(value)?;
-                self.environment.borrow_mut().assign(name, &value)?;
-                Ok(value)
+                
+                let distance = self.locals.get(name);
+                if let Some(distance) = distance {
+                    self.environment.borrow_mut().assign_at(*distance, name, &value)?;
+                    Ok(value)
+                }
+                else {
+                    self.environment.borrow_mut().assign(name, &value)?;
+                    Ok(value)
+                }
             }
             _ => unreachable!(),
         }
