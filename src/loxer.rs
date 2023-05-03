@@ -43,8 +43,8 @@ impl Loxer {
         if let Ok(stmts) = stmts {
             info!("Parsed expression: {:?}", stmts);
             let mut resolver = Resolver::new(&mut self.interpreter);
-            if let Err(e) = resolver.resolve_stmts(&stmts) {
-                eprintln!("{}", e.message);
+            resolver.resolve_stmts(&stmts).unwrap();
+            if resolver.has_error {
                 std::process::exit(65);
             }
             let res: std::result::Result<(), Error> = self.interpreter.interpret(&stmts);

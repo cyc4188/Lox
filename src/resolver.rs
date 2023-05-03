@@ -5,6 +5,7 @@ use super::*;
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
+    fun_depth: usize,
     pub has_error: bool,
 }
 
@@ -13,8 +14,19 @@ impl<'a> Resolver<'a> {
         Self {
             interpreter,
             scopes: Vec::new(),
+            fun_depth: 0,
             has_error: false,
         }
+    }
+
+    fn begin_fun(&mut self) {
+        self.fun_depth += 1;
+        self.begin_scope();
+    }
+
+    fn end_fun(&mut self) {
+        self.fun_depth -= 1;
+        self.end_scope();
     }
 
     fn begin_scope(&mut self) {
@@ -184,13 +196,13 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.declare(name)?;
                 self.define(name)?;
 
-                self.begin_scope();
+                self.begin_fun();
                 for param in params {
                     self.declare(param)?;
                     self.define(param)?;
                 }
                 self.resolve_stmts(body)?;
-                self.end_scope();
+                self.end_fun();
 
                 Ok(())
             }
@@ -230,7 +242,11 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     }
     fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ReturnStmt { value , ..} => {
+            Stmt::ReturnStmt { value , keyword} => {
+                if self.fun_depth == 0 {
+                    parse_error(keyword, "Cannot return from top-level code.");
+                    self.has_error = true;
+                }
                 if let Some(value) = value {
                     self.resolve_expr(value)?;
                 }
