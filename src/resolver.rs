@@ -5,6 +5,7 @@ use super::*;
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
+    pub has_error: bool,
 }
 
 impl<'a> Resolver<'a> {
@@ -12,6 +13,7 @@ impl<'a> Resolver<'a> {
         Self {
             interpreter,
             scopes: Vec::new(),
+            has_error: false,
         }
     }
 
@@ -47,6 +49,10 @@ impl<'a> Resolver<'a> {
 
     fn define(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
+            if scope.contains_key(&name.lexeme) {
+                parse_error(name, "Variable with this name already declared in this scope.");
+                self.has_error = true;
+            }
             scope.insert(name.lexeme.clone(), true);
         }
         Ok(())
@@ -73,6 +79,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 if let Some(scope) = self.scopes.last_mut() {
                     if scope.get(&name.lexeme) == Some(&false) {
                         parse_error(name, "Cannot read local variable in its own initializer.");
+                        self.has_error = true;
                     }
                 }
                 self.resolve_local(expr, name)?;
