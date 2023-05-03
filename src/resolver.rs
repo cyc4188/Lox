@@ -27,7 +27,7 @@ impl<'a> Resolver<'a> {
         stmt.accept(self)
     }
 
-    fn resolve_stmts(&mut self, stmts: &Vec<Stmt>) -> Result<(), Error> {
+    pub fn resolve_stmts(&mut self, stmts: &Vec<Stmt>) -> Result<(), Error> {
         for stmt in stmts {
             self.resolve_stmt(stmt)?;
         }
@@ -50,7 +50,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_local(&mut self, expr: &Expr, name: &Token) {
+    fn resolve_local(&mut self, _expr: &Expr, name: &Token) {
         for (i, scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(&name.lexeme) {
                 self.interpreter.resolve(name, i);
@@ -119,7 +119,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!()
         }
     }
-    fn visit_literal_expr(&mut self, value: &Literal) -> Result<(), Error> {
+    fn visit_literal_expr(&mut self, _value: &Literal) -> Result<(), Error> {
         Ok(())
     }
     fn visit_logic_expr(&mut self, expr: &Expr) -> Result<(), Error> {

@@ -10,7 +10,7 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(lexeme: &str, token_type: TokenType, literal: Literal, line: usize, column: usize) -> Self {
+    pub fn new(lexeme: &str, token_type: TokenType, _literal: Literal, line: usize, column: usize) -> Self {
         Self {
             lexeme: lexeme.to_string(),
             token_type,

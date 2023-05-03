@@ -40,11 +40,14 @@ impl Loxer {
         let mut parser = Parser::new(tokens);
         let stmts = parser.parse();
 
-        if let Ok(expr) = stmts {
-            info!("Parsed expression: {:?}", expr);
-            // let mut interpreter = Interpreter::new();
-            
-            let res = self.interpreter.interpret(&expr);
+        if let Ok(stmts) = stmts {
+            info!("Parsed expression: {:?}", stmts);
+            let mut resolver = Resolver::new(&mut self.interpreter);
+            if let Err(e) = resolver.resolve_stmts(&stmts) {
+                eprintln!("{}", e.message);
+                std::process::exit(65);
+            }
+            let res: std::result::Result<(), Error> = self.interpreter.interpret(&stmts);
             if let Ok(()) = res {
 
             } else {
