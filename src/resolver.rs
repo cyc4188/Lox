@@ -38,25 +38,28 @@ impl<'a> Resolver<'a> {
         expr.accept(self)
     }
 
-    fn declare(&mut self, name: &Token) {
+    fn declare(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(name.lexeme.clone(), false);
         }
+        Ok(())
     }
 
-    fn define(&mut self, name: &Token) {
+    fn define(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(name.lexeme.clone(), true);
         }
+        Ok(())
     }
 
-    fn resolve_local(&mut self, _expr: &Expr, name: &Token) {
+    fn resolve_local(&mut self, _expr: &Expr, name: &Token) -> Result<(), Error> {
         for (i, scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(&name.lexeme) {
                 self.interpreter.resolve(name, i);
-                return;
+                return Ok(());
             }
         }
+        Ok(())
         // not found
         // we assume it a global variable
     }
@@ -72,7 +75,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                         parse_error(name, "Cannot read local variable in its own initializer.");
                     }
                 }
-                self.resolve_local(expr, name);
+                self.resolve_local(expr, name)?;
                 Ok(())
             }
             _ => unreachable!()
@@ -82,7 +85,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
         match expr {
             Expr::Assign { name, value } => {
                 self.resolve_expr(value)?;
-                self.resolve_local(expr, name);
+                self.resolve_local(expr, name)?;
                 Ok(())
             }
             _ => unreachable!()
@@ -158,11 +161,11 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::VarStmt { name, initializer } => {
-                self.declare(name);
+                self.declare(name)?;
                 if let Some(initializer) = initializer {
                     self.resolve_expr(initializer)?;
                 }
-                self.define(name);
+                self.define(name)?;
                 Ok(())
             }
             _ => unreachable!()
@@ -171,13 +174,13 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::FunStmt { name, params, body } => {
-                self.declare(name);
-                self.define(name);
+                self.declare(name)?;
+                self.define(name)?;
 
                 self.begin_scope();
                 for param in params {
-                    self.declare(param);
-                    self.define(param);
+                    self.declare(param)?;
+                    self.define(param)?;
                 }
                 self.resolve_stmts(body)?;
                 self.end_scope();
