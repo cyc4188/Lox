@@ -459,7 +459,8 @@ impl<'a> Parser<'a> {
 
         if matches!(self, String) {
             return Ok(Expr::Literal {
-                value: Literal::String(self.previous().lexeme.clone())
+                // value: Literal::String(self.previous().lexeme.clone())
+                value: Literal::String(self.previous().lexeme[1..self.previous().lexeme.len()-1].to_string())
             });
         }
         if matches!(self, Number) {

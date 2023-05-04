@@ -54,6 +54,10 @@ impl<'a> Resolver<'a> {
 
     fn declare(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
+            if scope.contains_key(&name.lexeme) {
+                parse_error(name, "Variable with this name already declared in this scope.");
+                self.has_error = true;
+            }
             scope.insert(name.lexeme.clone(), false);
         }
         Ok(())
@@ -61,10 +65,6 @@ impl<'a> Resolver<'a> {
 
     fn define(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
-            if scope.contains_key(&name.lexeme) {
-                parse_error(name, "Variable with this name already declared in this scope.");
-                self.has_error = true;
-            }
             scope.insert(name.lexeme.clone(), true);
         }
         Ok(())
@@ -191,6 +191,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
         }
     }
     fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        trace!("Visiting function statement");
         match stmt {
             Stmt::FunStmt { name, params, body } => {
                 self.declare(name)?;

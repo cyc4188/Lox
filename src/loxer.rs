@@ -140,6 +140,6 @@ mod test {
         set_logger();
         info!("Running test_run())");
         let mut loxer = Loxer::new();
-        loxer.run("1+2*(3*4 - 6 / 2);", MODE::PROMPT);
+        loxer.run("print 1+2*(3*4 - 6 / 2);", MODE::PROMPT);
     }
 }
