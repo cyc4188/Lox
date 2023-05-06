@@ -12,6 +12,7 @@ pub mod stmt {
         fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
         fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
+        fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<T, Error>;
     }
 }
 
@@ -64,6 +65,10 @@ pub enum Stmt {
         keyword: Token,
         value: Option<Expr>,
     },
+    ClassStmt {
+        name: Token,
+        methods: Vec<Stmt>,
+    },
 }
 
 impl Stmt {
@@ -77,6 +82,7 @@ impl Stmt {
             Stmt::WhileStmt { .. } => visitor.visit_while_stmt(self),
             Stmt::FunStmt { .. } => visitor.visit_func_stmt(self),
             Stmt::ReturnStmt { .. } => visitor.visit_return_stmt(self),
+            Stmt::ClassStmt { .. } => visitor.visit_class_stmt(self),
         }
     }
 }

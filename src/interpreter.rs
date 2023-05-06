@@ -443,4 +443,7 @@ impl stmt::Visitor<()> for Interpreter {
             _ => unreachable!()
         } 
     }
+    fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        unimplemented!()
+    }
 }

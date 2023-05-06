@@ -25,10 +25,12 @@ macro_rules! matches {
 /// program        → declaration* EOF ;
 /// declaration    → varDecl
 ///                 | funDecl
-///                 | statement ;
+///                 | statement
+///                 | classDecl ;
 /// funDecl        → "fun" function ;
 /// function       → IDENTIFIER "(" parameters? ")" block ;
 /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+/// classDecl      → "class" IDENTIFIER "{" function* "}" ;
 /// statement      → exprStmt
 ///                | ifStmt 
 ///                | printStmt 
@@ -85,6 +87,8 @@ impl<'a> Parser<'a> {
             self.var_decl()
         } else if matches!(self, Fun) {
             self.function("function")
+        } else if matches!(self, Class) {
+            self.class_decl()
         }
         else {
             self.statement()
@@ -95,6 +99,21 @@ impl<'a> Parser<'a> {
         }
 
         res
+    }
+
+    /// classDecl     → "class" IDENTIFIER "{" function* "}"
+    fn class_decl(&mut self) -> Result<Stmt, Error> {
+        let name = self.consume(Identifier, "Expect class name.")?.clone();
+        self.consume(LeftBrace, "Expect '{' before class body.")?;
+
+        // get methods
+        let mut methods = Vec::new();
+        while !self.check(RightBrace) {
+            methods.push(self.function("method")?);
+        }
+        self.consume(RightBrace, "Expect '}' after class body.")?;
+
+        Ok(Stmt::ClassStmt { name, methods })
     }
 
     /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
