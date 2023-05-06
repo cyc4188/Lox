@@ -93,6 +93,7 @@ impl Interpreter {
             Object::Number(n) => n.to_string(),
             Object::String(s) => s.clone(),
             Object::Callable(function) => function.to_string(),
+            Object::Class(class) => class.to_string(),
         }
     }
 
@@ -444,6 +445,17 @@ impl stmt::Visitor<()> for Interpreter {
         } 
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
-        unimplemented!()
+        match stmt {
+            Stmt::ClassStmt { name, .. } => {
+                let class = Object::Class(LoxClass::new(
+                    name.lexeme.clone(),
+                ));
+                self.environment
+                    .borrow_mut()
+                    .define(&name.lexeme, class); 
+                Ok(())
+            }
+            _ => unreachable!()
+        }
     }
 }

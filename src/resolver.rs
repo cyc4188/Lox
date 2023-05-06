@@ -266,4 +266,15 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
             _ => unreachable!()
         }
     }
+    fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        match stmt {
+            Stmt::ClassStmt { name, methods } => {
+                self.declare(name)?;
+                self.define(name)?;
+                // TODO: Check methods
+                Ok(())
+            }
+            _ => unreachable!()
+        }
+    }
 }

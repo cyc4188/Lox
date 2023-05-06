@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use crate::Function;
+use crate::LoxClass;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -8,6 +9,7 @@ pub enum Object {
     String(String),
     Boolean(bool),
     Callable(Function),
+    Class(LoxClass),
     Nil,
 }
 
@@ -18,7 +20,8 @@ impl Display for Object {
             Object::String(s) => write!(f, "{}", s),
             Object::Boolean(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
-            Object::Callable(_) => write!(f, "<callable>")
+            Object::Callable(_) => write!(f, "<callable>"),
+            Object::Class(c) => write!(f, "{}", c)
         }
     }
 }

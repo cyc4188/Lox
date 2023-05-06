@@ -12,6 +12,7 @@ pub mod statement;
 pub mod env;
 pub mod function;
 pub mod resolver;
+pub mod loxclass;
 
 pub use loxer::Loxer;
 pub use token::{Literal, Token, TokenType};
@@ -27,6 +28,7 @@ pub use statement::*;
 pub use env::*;
 pub use function::*;
 pub use resolver::*;
+pub use loxclass::*;
 
 pub use log::{info, debug, trace};
 
