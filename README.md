@@ -34,7 +34,7 @@ cargo test
 
 - [x] Functions
 
-- [ ] Resolving and Binding
+- [x] Resolving and Binding
 
 - [ ] Classes
 
