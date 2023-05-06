@@ -59,7 +59,7 @@ pub enum Expr {
     },
     Call {
         callee: Box<Expr>,
-        paren: Token,
+        paren: Token, // right paren
         arguments: Vec<Expr>,
     },
 }

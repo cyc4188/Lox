@@ -5,6 +5,8 @@ use std::fmt::Display;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+type ClassRef = Rc<RefCell<LoxClass>>;
+
 #[derive(Debug, Clone)]
 pub struct LoxClass {
     name: String,
@@ -24,6 +26,19 @@ impl Display for LoxClass {
 }
 
 
+#[derive(Debug, Clone)]
 pub struct LoxInstance {
-    class: Rc<RefCell<LoxClass>>,
+    class: ClassRef,
+}
+
+impl LoxInstance {
+    pub fn new(class: Rc<RefCell<LoxClass>>) -> Self {
+        Self { class }
+    }
+}
+
+impl Display for LoxInstance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<instance of {}>", self.class.borrow().name)
+    }
 }

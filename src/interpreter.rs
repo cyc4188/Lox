@@ -1,5 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
 use std::collections::HashMap;
+use std::{cell::RefCell, rc::Rc};
 
 use super::*;
 
@@ -14,7 +14,7 @@ impl Interpreter {
         let globals = Rc::new(RefCell::new(Environment::new(None)));
 
         let clock: Object = Object::Callable(Function::Native {
-            name: "clock".to_string(), 
+            name: "clock".to_string(),
             arity: 0,
             body: Box::new(|_: &Vec<Object>| -> Object {
                 Object::Number(
@@ -93,7 +93,8 @@ impl Interpreter {
             Object::Number(n) => n.to_string(),
             Object::String(s) => s.clone(),
             Object::Callable(function) => function.to_string(),
-            Object::Class(class) => class.to_string(),
+            Object::Class(class) => class.borrow().to_string(),
+            Object::Instance(instance) => instance.to_string(),
         }
     }
 
@@ -103,17 +104,12 @@ impl Interpreter {
 
     fn look_up_variable(&self, name: &Token) -> Result<Object, Error> {
         let result: Option<Object> = match self.locals.get(name) {
-            Some(distance) => {
-                self.environment.borrow().get_at(*distance, &name.lexeme)
-            }
-            None => {
-                self.globals.borrow().get(&name.lexeme)
-            }
+            Some(distance) => self.environment.borrow().get_at(*distance, &name.lexeme),
+            None => self.globals.borrow().get(&name.lexeme),
         };
         if let Some(obj) = result {
             Ok(obj)
-        }
-        else {
+        } else {
             Err(Error {
                 message: format!("Undefined variable {}.", name.lexeme),
                 error_type: ErrorType::RuntimeError(name.clone()),
@@ -244,13 +240,14 @@ impl expr::Visitor<Object> for Interpreter {
         match expr {
             Expr::Assign { name, value } => {
                 let value = self.evaluate(value)?;
-                
+
                 let distance = self.locals.get(name);
                 if let Some(distance) = distance {
-                    self.environment.borrow_mut().assign_at(*distance, name, &value)?;
+                    self.environment
+                        .borrow_mut()
+                        .assign_at(*distance, name, &value)?;
                     Ok(value)
-                }
-                else {
+                } else {
                     self.environment.borrow_mut().assign(name, &value)?;
                     Ok(value)
                 }
@@ -278,7 +275,6 @@ impl expr::Visitor<Object> for Interpreter {
                 } else {
                     Ok(left_value)
                 }
-                
             }
             _ => unreachable!(),
         }
@@ -302,7 +298,7 @@ impl expr::Visitor<Object> for Interpreter {
                 // check if callee is a function
                 if let Object::Callable(function) = callee {
                     // check if number of arguments matches number of parameters
-                    trace!("function arity: {}", function.arity(), );
+                    trace!("function arity: {}", function.arity(),);
                     trace!("args.len: {}", args.len());
                     if function.arity() != args.len() {
                         return Err(Error {
@@ -316,6 +312,9 @@ impl expr::Visitor<Object> for Interpreter {
                     }
                     // call function
                     Ok(function.call(self, &args)?)
+                } else if let Object::Class(class) = callee {
+                    // get a new instance of the class
+                    Ok(Object::Instance(LoxInstance::new(class.clone())))
                 } else {
                     Err(Error {
                         message: "Can only call functions and classes.".to_string(),
@@ -420,9 +419,7 @@ impl stmt::Visitor<()> for Interpreter {
                     closure: self.environment.clone(),
                 });
 
-                self.environment
-                .borrow_mut()
-                .define(&name.lexeme, function);
+                self.environment.borrow_mut().define(&name.lexeme, function);
 
                 Ok(())
             }
@@ -431,7 +428,7 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ReturnStmt {value , ..} => {
+            Stmt::ReturnStmt { value, .. } => {
                 let value = match value {
                     Some(expr) => self.evaluate(expr)?,
                     None => Object::Nil,
@@ -441,21 +438,18 @@ impl stmt::Visitor<()> for Interpreter {
                     error_type: ErrorType::Return(value),
                 })
             }
-            _ => unreachable!()
-        } 
+            _ => unreachable!(),
+        }
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::ClassStmt { name, .. } => {
-                let class = Object::Class(LoxClass::new(
-                    name.lexeme.clone(),
-                ));
-                self.environment
-                    .borrow_mut()
-                    .define(&name.lexeme, class); 
+                let class_inner = Rc::new(RefCell::new(LoxClass::new(name.lexeme.clone())));
+                let class = Object::Class(class_inner);
+                self.environment.borrow_mut().define(&name.lexeme, class);
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

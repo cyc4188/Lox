@@ -1,7 +1,11 @@
 use std::fmt::Display;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::Function;
 use crate::LoxClass;
+use crate::LoxInstance;
+type ClassRef = Rc<RefCell<LoxClass>>;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -9,7 +13,8 @@ pub enum Object {
     String(String),
     Boolean(bool),
     Callable(Function),
-    Class(LoxClass),
+    Class(ClassRef),
+    Instance(LoxInstance),
     Nil,
 }
 
@@ -21,7 +26,8 @@ impl Display for Object {
             Object::Boolean(b) => write!(f, "{}", b),
             Object::Nil => write!(f, "nil"),
             Object::Callable(_) => write!(f, "<callable>"),
-            Object::Class(c) => write!(f, "{}", c)
+            Object::Class(c) => write!(f, "{}", c.borrow()),
+            Object::Instance(i) => write!(f, "{}", i),
         }
     }
 }
