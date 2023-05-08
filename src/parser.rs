@@ -58,7 +58,7 @@ macro_rules! matches {
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
 ///                | call ;
-/// call           → primary ( "(" arguments? ")" )* ;
+/// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER ;
@@ -449,8 +449,16 @@ impl<'a> Parser<'a> {
     /// call          → primary ( "(" arguments? ")" )* ;
     fn call(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
-        while matches!(self, LeftParen) {
-            expr = self.finish_call(expr)?;
+        while matches!(self, LeftParen, Dot) {
+            if self.previous().token_type == LeftParen {
+                expr = self.finish_call(expr)?;
+            } else {
+                let name = self.consume(Identifier, "Expect property name after '.'.")?;
+                expr = Expr::Get {
+                    object: Box::new(expr),
+                    name: name.clone(),
+                };
+            }
         }
         Ok(expr)
     }

@@ -163,6 +163,15 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!()
         }
     }
+    fn visit_get_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::Get { object, .. } => {
+                self.resolve_expr(object)?;
+                Ok(())
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl<'a> stmt::Visitor<()> for Resolver<'a> {

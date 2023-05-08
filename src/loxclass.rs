@@ -1,4 +1,5 @@
 use crate::Function;
+use crate::Object;
 
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -29,11 +30,27 @@ impl Display for LoxClass {
 #[derive(Debug, Clone)]
 pub struct LoxInstance {
     class: ClassRef,
+    fields: HashMap<String, Object>,
 }
 
 impl LoxInstance {
     pub fn new(class: Rc<RefCell<LoxClass>>) -> Self {
-        Self { class }
+        Self { 
+            class ,
+            fields: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, name: &str) -> Option<Object> {
+        if let Some(value) = self.fields.get(name) {
+            return Some(value.clone());
+        }
+
+        if let Some(method) = self.class.borrow().methods.get(name) {
+            return Some(Object::Callable(method.clone()));
+        }
+
+        None
     }
 }
 

@@ -325,6 +325,31 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!(),
         }
     }
+    fn visit_get_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Get { object, name } => {
+                let object = object.accept(self)?;
+                if let Object::Instance(instance) = object {
+                    let field = instance.get(&name.lexeme);
+                    if let Some(field) = field {
+                        Ok(field)
+                    } else {
+                        Err(Error {
+                            message: format!("Undefined property '{}'.", name.lexeme),
+                            error_type: ErrorType::RuntimeError(name.clone()),
+                        }) 
+                    }
+                    // Ok(instance.get(name)?)
+                } else {
+                    Err(Error {
+                        message: "Only instances have properties.".to_string(),
+                        error_type: ErrorType::RuntimeError(name.clone()),
+                    })
+                } 
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl stmt::Visitor<()> for Interpreter {
