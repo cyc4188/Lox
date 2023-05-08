@@ -6,6 +6,7 @@ use crate::Function;
 use crate::LoxClass;
 use crate::LoxInstance;
 type ClassRef = Rc<RefCell<LoxClass>>;
+type InstanceRef = Rc<RefCell<LoxInstance>>;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -14,7 +15,7 @@ pub enum Object {
     Boolean(bool),
     Callable(Function),
     Class(ClassRef),
-    Instance(LoxInstance),
+    Instance(InstanceRef),
     Nil,
 }
 
@@ -27,7 +28,7 @@ impl Display for Object {
             Object::Nil => write!(f, "nil"),
             Object::Callable(_) => write!(f, "<callable>"),
             Object::Class(c) => write!(f, "{}", c.borrow()),
-            Object::Instance(i) => write!(f, "{}", i),
+            Object::Instance(i) => write!(f, "{}", i.borrow()),
         }
     }
 }

@@ -94,7 +94,7 @@ impl Interpreter {
             Object::String(s) => s.clone(),
             Object::Callable(function) => function.to_string(),
             Object::Class(class) => class.borrow().to_string(),
-            Object::Instance(instance) => instance.to_string(),
+            Object::Instance(instance) => instance.borrow().to_string(),
         }
     }
 
@@ -314,7 +314,9 @@ impl expr::Visitor<Object> for Interpreter {
                     Ok(function.call(self, &args)?)
                 } else if let Object::Class(class) = callee {
                     // get a new instance of the class
-                    Ok(Object::Instance(LoxInstance::new(class.clone())))
+                    Ok(Object::Instance(
+                        Rc::new(RefCell::new(LoxInstance::new(class.clone())))
+                    ))
                 } else {
                     Err(Error {
                         message: "Can only call functions and classes.".to_string(),
@@ -330,7 +332,7 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Get { object, name } => {
                 let object = object.accept(self)?;
                 if let Object::Instance(instance) = object {
-                    let field = instance.get(&name.lexeme);
+                    let field = instance.borrow().get(&name.lexeme);
                     if let Some(field) = field {
                         Ok(field)
                     } else {
@@ -354,19 +356,17 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Set { object, name, value } => {
                 // object.name = value
                 let object = object.accept(self)?;
-                if let Object::Instance(ref instance) = object {
+                if let Object::Instance(instance) = object {
                     let value = self.evaluate(value)?; 
-                    // TODO: fuck! use Rc!!!
-                    // instance.set(&name.lexeme, value);
-                    unimplemented!()
+                    instance.borrow_mut().set(&name.lexeme, &value);
+                    Ok(value)
                 }
                 else {
-                    return Err(Error {
+                    Err(Error {
                         message: "Only instances have fields.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
-                    });
+                    })
                 }
-                unimplemented!()
             }
             _ => unreachable!()
         }

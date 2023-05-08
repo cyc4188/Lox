@@ -52,8 +52,8 @@ impl LoxInstance {
 
         None
     }
-    pub fn set(&mut self, name: &str, value: Object) {
-        self.fields.insert(name.to_string(), value);
+    pub fn set(&mut self, name: &str, value: &Object) {
+        self.fields.insert(name.to_string(), value.clone());
     }
 }
 
