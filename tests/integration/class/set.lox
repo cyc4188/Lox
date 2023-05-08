@@ -6,4 +6,7 @@ class Test {
 
 var test = Test();
 test.a = 1;
-print test.a;
+print test.a; // expect: 1
+
+test.b = Test();
+print test.b; // expect: <instance of Test>
