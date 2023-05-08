@@ -1,11 +1,18 @@
 use std::collections::HashMap;
+use std::mem;
 
 use super::*;
+
+enum FunctionType {
+    None,
+    Function,
+    Method,
+}
 
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
-    fun_depth: usize,
+    current_function: FunctionType,
     pub has_error: bool,
 }
 
@@ -14,19 +21,9 @@ impl<'a> Resolver<'a> {
         Self {
             interpreter,
             scopes: Vec::new(),
-            fun_depth: 0,
+            current_function: FunctionType::None,
             has_error: false,
         }
-    }
-
-    fn begin_fun(&mut self) {
-        self.fun_depth += 1;
-        self.begin_scope();
-    }
-
-    fn end_fun(&mut self) {
-        self.fun_depth -= 1;
-        self.end_scope();
     }
 
     fn begin_scope(&mut self) {
@@ -52,10 +49,31 @@ impl<'a> Resolver<'a> {
         expr.accept(self)
     }
 
+    fn resolve_function(
+        &mut self,
+        params: &Vec<Token>,
+        body: &Vec<Stmt>,
+        func_type: FunctionType,
+    ) -> Result<(), Error> {
+        let enclosing_function = mem::replace(&mut self.current_function, func_type);
+        self.begin_scope();
+        for param in params {
+            self.declare(param)?;
+            self.define(param)?;
+        }
+        self.resolve_stmts(body)?;
+        self.end_scope();
+        self.current_function = enclosing_function;
+        Ok(())
+    }
+
     fn declare(&mut self, name: &Token) -> Result<(), Error> {
         if let Some(scope) = self.scopes.last_mut() {
             if scope.contains_key(&name.lexeme) {
-                parse_error(name, "Variable with this name already declared in this scope.");
+                parse_error(
+                    name,
+                    "Variable with this name already declared in this scope.",
+                );
                 self.has_error = true;
             }
             scope.insert(name.lexeme.clone(), false);
@@ -83,7 +101,6 @@ impl<'a> Resolver<'a> {
     }
 }
 
-
 impl<'a> expr::Visitor<()> for Resolver<'a> {
     fn visit_variable_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
@@ -97,7 +114,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_local(expr, name)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_assign_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -107,7 +124,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_local(expr, name)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_binary_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -117,19 +134,21 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(right)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
-            Expr::Call { callee, arguments , ..} => {
+            Expr::Call {
+                callee, arguments, ..
+            } => {
                 self.resolve_expr(callee)?;
                 for argument in arguments {
                     self.resolve_expr(argument)?;
                 }
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_grouping_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -138,7 +157,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(expression)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_literal_expr(&mut self, _value: &Literal) -> Result<(), Error> {
@@ -151,7 +170,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(right)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_unary_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -160,7 +179,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(right)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_get_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -169,7 +188,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(object)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_set_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -179,7 +198,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(value)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -193,7 +212,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.end_scope();
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_var_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -206,7 +225,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.define(name)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_func_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -216,17 +235,11 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.declare(name)?;
                 self.define(name)?;
 
-                self.begin_fun();
-                for param in params {
-                    self.declare(param)?;
-                    self.define(param)?;
-                }
-                self.resolve_stmts(body)?;
-                self.end_fun();
+                self.resolve_function(params, body, FunctionType::Function)?;
 
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_expr_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -235,12 +248,16 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(expression)?;
                 Ok(())
             }
-            _ => unreachable!() 
+            _ => unreachable!(),
         }
     }
     fn visit_if_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::IfStmt { condition, then_branch, else_branch } => {
+            Stmt::IfStmt {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 self.resolve_expr(condition)?;
                 self.resolve_stmt(then_branch)?;
                 if let Some(else_branch) = else_branch {
@@ -248,7 +265,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 }
                 Ok(())
             }
-            _ => unreachable!() 
+            _ => unreachable!(),
         }
     }
     fn visit_print_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -257,13 +274,13 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.resolve_expr(expression)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ReturnStmt { value , keyword} => {
-                if self.fun_depth == 0 {
+            Stmt::ReturnStmt { value, keyword } => {
+                if let FunctionType::None = self.current_function  {
                     parse_error(keyword, "Cannot return from top-level code.");
                     self.has_error = true;
                 }
@@ -272,7 +289,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 }
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_while_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -282,7 +299,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.resolve_stmt(body)?;
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
@@ -291,9 +308,18 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.declare(name)?;
                 self.define(name)?;
                 // TODO: Check methods
+                for method in methods {
+                    let decl = FunctionType::Method;
+                    match method {
+                        Stmt::FunStmt { name, params, body } => {
+                            self.resolve_function(params, body, decl)?;
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 Ok(())
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

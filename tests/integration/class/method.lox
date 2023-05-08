@@ -1,0 +1,8 @@
+class Test {
+    hello() {
+        print "Hello, World!";
+    }
+}
+
+var test = Test();
+test.hello(); // expect: Hello, World!

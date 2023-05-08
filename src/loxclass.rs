@@ -11,12 +11,12 @@ type ClassRef = Rc<RefCell<LoxClass>>;
 #[derive(Debug, Clone)]
 pub struct LoxClass {
     name: String,
-    methods: HashMap<String, Function>,
+    pub methods: HashMap<String, Function>,
 }
 
 impl LoxClass {
-    pub fn new(name: String) -> Self {
-        Self { name, methods: HashMap::new() }
+    pub fn new(name: String, methods: HashMap<String, Function>) -> Self {
+        Self { name, methods }
     }
 }
 

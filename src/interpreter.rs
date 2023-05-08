@@ -489,8 +489,28 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, .. } => {
-                let class_inner = Rc::new(RefCell::new(LoxClass::new(name.lexeme.clone())));
+            Stmt::ClassStmt { name, methods } => {
+                let mut class_methods = HashMap::new();
+                for method in methods {
+                    match method {
+                        Stmt::FunStmt { name, params, body } => {
+                            let function = Function::UserDefined { 
+                                name: name.clone(), 
+                                params: params.clone(), 
+                                body: body.clone(), 
+                                closure: self.environment.clone() 
+                            };
+
+                            class_methods.insert(name.lexeme.clone(), function);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
+                let class_inner = Rc::new(RefCell::new(
+                    LoxClass::new(name.lexeme.clone(), class_methods)
+                ));
+
                 let class = Object::Class(class_inner);
                 self.environment.borrow_mut().define(&name.lexeme, class);
                 Ok(())
