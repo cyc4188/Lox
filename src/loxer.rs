@@ -41,7 +41,7 @@ impl Loxer {
         let stmts = parser.parse();
 
         if let Ok(stmts) = stmts {
-            info!("Parsed expression: {:?}", stmts);
+            info!("Parsed expression: {}", stmts.clone().into_iter().map(|s| s.to_string()).collect::<Vec<String>>().join(" "));
             let mut resolver = Resolver::new(&mut self.interpreter);
             resolver.resolve_stmts(&stmts).unwrap();
             if resolver.has_error {

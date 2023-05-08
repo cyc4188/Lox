@@ -172,6 +172,16 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!()
         }
     }
+    fn visit_set_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::Set { object, value, .. } => {
+                self.resolve_expr(object)?;
+                self.resolve_expr(value)?;
+                Ok(())
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl<'a> stmt::Visitor<()> for Resolver<'a> {

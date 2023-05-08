@@ -339,13 +339,34 @@ impl expr::Visitor<Object> for Interpreter {
                             error_type: ErrorType::RuntimeError(name.clone()),
                         }) 
                     }
-                    // Ok(instance.get(name)?)
                 } else {
                     Err(Error {
                         message: "Only instances have properties.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
                 } 
+            }
+            _ => unreachable!()
+        }
+    }
+    fn visit_set_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Set { object, name, value } => {
+                // object.name = value
+                let object = object.accept(self)?;
+                if let Object::Instance(ref instance) = object {
+                    let value = self.evaluate(value)?; 
+                    // TODO: fuck! use Rc!!!
+                    // instance.set(&name.lexeme, value);
+                    unimplemented!()
+                }
+                else {
+                    return Err(Error {
+                        message: "Only instances have fields.".to_string(),
+                        error_type: ErrorType::RuntimeError(name.clone()),
+                    });
+                }
+                unimplemented!()
             }
             _ => unreachable!()
         }

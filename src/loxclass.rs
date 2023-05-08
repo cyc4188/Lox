@@ -52,6 +52,9 @@ impl LoxInstance {
 
         None
     }
+    pub fn set(&mut self, name: &str, value: Object) {
+        self.fields.insert(name.to_string(), value);
+    }
 }
 
 impl Display for LoxInstance {

@@ -48,7 +48,7 @@ macro_rules! matches {
 ///                         expression? ")" statement ; 
 /// returnStmt     | "return" expression? ";" ;
 /// expression     → assignment ;
-/// assignment     → IDENTIFIER "=" assignment
+/// assignment     → ( call "." )? IDENTIFIER "=" assignment
 ///                | logicOr ;
 /// logicOr        → logicAnd ( "or" logicAnd )* ;
 /// logicAnd       → equality ( "and" equality )* ;
@@ -317,8 +317,8 @@ impl<'a> Parser<'a> {
         self.assignment()
     }
 
-    /// assignment     → IDENTIFIER "=" assignment
-    ///                | equality ;
+    /// assignment     → ( call "." )? IDENTIFIER "=" assignment
+    ///                | logic_or ;
     fn assignment(&mut self) -> Result<Expr, Error> {
         let expr = self.logic_or();
 
@@ -329,6 +329,12 @@ impl<'a> Parser<'a> {
                     name,
                     value: Box::new(value),
                 });
+            } else if let Ok(Expr::Get { object, name }) = expr {
+                return Ok(Expr::Set {
+                    object,
+                    name,
+                    value: Box::new(value),
+                });  
             }
             return Err(self.error(self.previous(), "Invalid assignment target."));
         }
@@ -446,7 +452,7 @@ impl<'a> Parser<'a> {
     }
 
 
-    /// call          → primary ( "(" arguments? ")" )* ;
+    /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
     fn call(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
         while matches!(self, LeftParen, Dot) {

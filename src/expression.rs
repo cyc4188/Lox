@@ -13,6 +13,7 @@ pub mod expr {
         fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -67,6 +68,11 @@ pub enum Expr {
         object: Box<Expr>,
         name: Token,
     },
+    Set {
+        object: Box<Expr>,
+        name: Token,
+        value: Box<Expr>,
+    },
 }
 
 
@@ -83,6 +89,7 @@ impl Expr {
             Expr::Logical { left, operator, right } => visitor.visit_logic_expr(self),
             Expr::Call { callee, paren, arguments } => visitor.visit_call_expr(self),
             Expr::Get { object, name } => visitor.visit_get_expr(self),
+            Expr::Set { object, name, value } => visitor.visit_set_expr(self),
         }
     }
 }
@@ -103,6 +110,9 @@ impl fmt::Display for Expr {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
             Expr::Get { object, name } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::Set { object, name, value } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
         }
@@ -205,6 +215,14 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(format!("({}.{})", object.accept(self)?, name.lexeme))
             }
             _ => Err(Error::new("Expected get expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_set_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Set { object, name, value } => {
+                Ok(format!("(set: {}.{} = {})", object.accept(self)?, name, value.accept(self)?))
+            }
+            _ => Err(Error::new("Expected set expression", ErrorType::SyntaxError)),
         }
     }
 }
