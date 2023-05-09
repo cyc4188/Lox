@@ -9,10 +9,16 @@ enum FunctionType {
     Method,
 }
 
+enum ClassType {
+    None,
+    Class,
+}
+
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
     current_function: FunctionType,
+    current_class: ClassType,
     pub has_error: bool,
 }
 
@@ -22,6 +28,7 @@ impl<'a> Resolver<'a> {
             interpreter,
             scopes: Vec::new(),
             current_function: FunctionType::None,
+            current_class: ClassType::None,
             has_error: false,
         }
     }
@@ -64,6 +71,31 @@ impl<'a> Resolver<'a> {
         self.resolve_stmts(body)?;
         self.end_scope();
         self.current_function = enclosing_function;
+        Ok(())
+    }
+
+    fn resolve_class(
+        &mut self,
+        methods: &Vec<Stmt>,    
+        class_type: ClassType,
+    ) -> Result<(), Error> {
+        let enclosing_class = mem::replace(&mut self.current_class, class_type);
+        self.begin_scope();
+        if let Some(scope) = self.scopes.last_mut() {
+            scope.insert(String::from("this"), true);
+        }
+
+        for method in methods {
+            let decl = FunctionType::Method;
+            match method {
+                Stmt::FunStmt { params, body , .. } => {
+                    self.resolve_function(params, body, decl)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        self.end_scope();
+        self.current_class = enclosing_class;
         Ok(())
     }
 
@@ -205,6 +237,11 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
             Expr::This { keyword }  => {
+                if let ClassType::None = self.current_class {
+                    parse_error(keyword, "Cannot use 'this' outside of a class.");
+                    self.has_error = true;
+                    return Ok(());
+                }
                 Ok(self.resolve_local(expr, keyword)?)
             }
             _ => unreachable!()
@@ -317,21 +354,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 self.declare(name)?;
                 self.define(name)?;
 
-                self.begin_scope();
-                if let Some(scope) = self.scopes.last_mut() {
-                    scope.insert(String::from("this"), true);
-                }
-
-                for method in methods {
-                    let decl = FunctionType::Method;
-                    match method {
-                        Stmt::FunStmt { params, body , .. } => {
-                            self.resolve_function(params, body, decl)?;
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                self.end_scope();
+                self.resolve_class(methods, ClassType::Class)?;
 
                 Ok(())
             }
