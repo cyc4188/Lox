@@ -99,6 +99,7 @@ impl Interpreter {
     }
 
     pub fn resolve(&mut self, token: &Token, depth: usize) {
+        trace!("Resolving {} at depth {}", token.lexeme, depth);
         self.locals.insert(token.clone(), depth);
     }
 
