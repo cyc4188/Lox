@@ -62,6 +62,7 @@ macro_rules! matches {
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER ;
+///                | this
 /// arguments      | expression ( "," expression )* ;
 /// parameters     | IDENTIFIER ( "," IDENTIFIER )* ;
 impl<'a> Parser<'a> {
@@ -471,7 +472,8 @@ impl<'a> Parser<'a> {
 
     /// primary        → NUMBER | STRING | "true" | "false" | "nil"
     ///                | "(" expression ")"
-    ///                | IDENTIFIER ;
+    ///                | IDENTIFIER 
+    ///                | this ;
     fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
             return Ok(Expr::Literal {
@@ -516,6 +518,12 @@ impl<'a> Parser<'a> {
             return Ok(Expr::Grouping {
                 expression: Box::new(expr),
             });
+        }
+
+        if matches!(self, This) {
+            return Ok(
+                Expr::This { keyword: self.previous().clone() }
+            );
         }
         Err(self.error(self.peak(), "Expect expression."))
         // Err(Error {

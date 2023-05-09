@@ -201,6 +201,14 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!(),
         }
     }
+    fn visit_this_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::This { keyword }  => {
+                Ok(self.resolve_local(expr, keyword)?)
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl<'a> stmt::Visitor<()> for Resolver<'a> {
@@ -307,16 +315,23 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
             Stmt::ClassStmt { name, methods } => {
                 self.declare(name)?;
                 self.define(name)?;
-                // TODO: Check methods
+
+                self.begin_scope();
+                if let Some(scope) = self.scopes.last_mut() {
+                    scope.insert(String::from("this"), true);
+                }
+
                 for method in methods {
                     let decl = FunctionType::Method;
                     match method {
-                        Stmt::FunStmt { name, params, body } => {
+                        Stmt::FunStmt { params, body , .. } => {
                             self.resolve_function(params, body, decl)?;
                         }
                         _ => unreachable!(),
                     }
                 }
+                self.end_scope();
+
                 Ok(())
             }
             _ => unreachable!(),

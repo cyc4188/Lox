@@ -14,6 +14,7 @@ pub mod expr {
         fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_this_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -73,6 +74,9 @@ pub enum Expr {
         name: Token,
         value: Box<Expr>,
     },
+    This {
+        keyword: Token,
+    },
 }
 
 
@@ -90,6 +94,7 @@ impl Expr {
             Expr::Call { callee, paren, arguments } => visitor.visit_call_expr(self),
             Expr::Get { object, name } => visitor.visit_get_expr(self),
             Expr::Set { object, name, value } => visitor.visit_set_expr(self),
+            Expr::This { keyword } => visitor.visit_this_expr(self),
         }
     }
 }
@@ -113,6 +118,9 @@ impl fmt::Display for Expr {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
             Expr::Set { object, name, value } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::This { keyword } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
         }
@@ -201,7 +209,7 @@ impl expr::Visitor<String> for AstPrinter {
     }
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
-            Expr::Call { callee, paren, arguments } => {
+            Expr::Call { callee, arguments , ..} => {
                 let callee = callee.accept(self)?;
                 let arguments = arguments.iter().map(|arg| arg.accept(self)).collect::<Result<Vec<String>, Error>>()?;
                 Ok(format!("{}({})", callee,  arguments.join(",")))
@@ -223,6 +231,14 @@ impl expr::Visitor<String> for AstPrinter {
                 Ok(format!("(set: {}.{} = {})", object.accept(self)?, name, value.accept(self)?))
             }
             _ => Err(Error::new("Expected set expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_this_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::This { .. } => {
+                Ok(format!("this "))
+            }
+            _ => unreachable!()
         }
     }
 }

@@ -41,13 +41,15 @@ impl LoxInstance {
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<Object> {
+    pub fn get(&self, name: &str, instance: &Object) -> Option<Object> {
         if let Some(value) = self.fields.get(name) {
             return Some(value.clone());
         }
 
         if let Some(method) = self.class.borrow().methods.get(name) {
-            return Some(Object::Callable(method.clone()));
+            return Some(
+                Object::Callable(method.bind(instance.clone()))
+            );
         }
 
         None

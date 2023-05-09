@@ -6,3 +6,4 @@ class Test {
 
 var test = Test();
 test.hello(); // expect: Hello, World!
+Test().hello(); // expect: Hello, World!

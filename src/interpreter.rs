@@ -331,8 +331,8 @@ impl expr::Visitor<Object> for Interpreter {
         match expr {
             Expr::Get { object, name } => {
                 let object = object.accept(self)?;
-                if let Object::Instance(instance) = object {
-                    let field = instance.borrow().get(&name.lexeme);
+                if let Object::Instance(ref instance) = object {
+                    let field = instance.borrow().get(&name.lexeme, &object);
                     if let Some(field) = field {
                         Ok(field)
                     } else {
@@ -367,6 +367,14 @@ impl expr::Visitor<Object> for Interpreter {
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
                 }
+            }
+            _ => unreachable!()
+        }
+    }
+    fn visit_this_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::This { keyword } => {
+                Ok(self.look_up_variable(keyword)?)
             }
             _ => unreachable!()
         }
