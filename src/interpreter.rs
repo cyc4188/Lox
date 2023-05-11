@@ -314,10 +314,26 @@ impl expr::Visitor<Object> for Interpreter {
                     // call function
                     Ok(function.call(self, &args)?)
                 } else if let Object::Class(class) = callee {
+                    // call class init
                     // get a new instance of the class
-                    Ok(Object::Instance(
-                        Rc::new(RefCell::new(LoxInstance::new(class.clone())))
-                    ))
+                    let instance = Object::Instance(Rc::new(RefCell::new(LoxInstance::new(
+                        class.clone(),
+                    ))));
+                    if let Some(initializer) = class.borrow().get_method("init") {
+                        if initializer.arity() != args.len() {
+                            return Err(Error {
+                                message: format!(
+                                    "Expected {} arguments but got {}.",
+                                    initializer.arity(),
+                                    args.len()
+                                ),
+                                error_type: ErrorType::RuntimeError(paren.clone()),
+                            });
+                        }
+                        initializer.bind(instance.clone()).call(self, &args)?;
+                    }
+
+                    Ok(instance)
                 } else {
                     Err(Error {
                         message: "Can only call functions and classes.".to_string(),

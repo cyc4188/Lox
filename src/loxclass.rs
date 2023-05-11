@@ -18,6 +18,18 @@ impl LoxClass {
     pub fn new(name: String, methods: HashMap<String, Function>) -> Self {
         Self { name, methods }
     }
+
+    pub fn get_method(&self, name: &str) -> Option<&Function> {
+        self.methods.get(name)
+    }
+
+    pub fn arity(&self) -> usize {
+        if let Some(initializer) = self.methods.get("init") {
+            initializer.arity()
+        } else {
+            0
+        }
+    }
 }
 
 impl Display for LoxClass {
@@ -46,7 +58,7 @@ impl LoxInstance {
             return Some(value.clone());
         }
 
-        if let Some(method) = self.class.borrow().methods.get(name) {
+        if let Some(method) = self.class.borrow().get_method(name) {
             return Some(
                 Object::Callable(method.bind(instance.clone()))
             );
