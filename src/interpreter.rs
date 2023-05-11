@@ -488,6 +488,7 @@ impl stmt::Visitor<()> for Interpreter {
                     params: params.clone(),
                     body: body.clone(),
                     closure: self.environment.clone(),
+                    is_initializer: false,
                 });
 
                 self.environment.borrow_mut().define(&name.lexeme, function);
@@ -523,7 +524,8 @@ impl stmt::Visitor<()> for Interpreter {
                                 name: name.clone(), 
                                 params: params.clone(), 
                                 body: body.clone(), 
-                                closure: self.environment.clone() 
+                                closure: self.environment.clone(),
+                                is_initializer: name.lexeme=="init",
                             };
 
                             class_methods.insert(name.lexeme.clone(), function);

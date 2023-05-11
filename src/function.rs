@@ -21,6 +21,7 @@ pub enum Function {
         params: Vec<Token>,
         body: Vec<Stmt>,
         closure: EnvironmentRef,
+        is_initializer: bool,
     },
 }
 
@@ -32,6 +33,7 @@ impl Function {
                 params,
                 body,
                 closure,
+                is_initializer,
                 ..
             } => {
                 // new environment for function call
@@ -45,12 +47,29 @@ impl Function {
                 }
 
                 if let Err(err) = interpreter.execute_block(body, environment) {
+                    if *is_initializer == true {
+                        return Ok(
+                            closure
+                                .borrow()
+                                .get_at(0, &String::from("this")).unwrap_or(Object::Nil)
+                        );
+                    }
+                    // normal function
                     match err.error_type {
                         ErrorType::Return(value) => Ok(value),
                         _ => Err(err),
                     }
                 } else {
-                    Ok(Object::Nil)
+                    if *is_initializer == true {
+                        Ok(
+                            closure
+                                .borrow()
+                                .get_at(0, &String::from("this")).unwrap_or(Object::Nil)
+                        )
+                    }
+                    else {
+                        Ok(Object::Nil)
+                    }
                 }
             }
         }
@@ -70,6 +89,7 @@ impl Function {
                 params,
                 body,
                 closure,
+                is_initializer,
             } => {
                 let mut environment_inner = Environment::new(Some(closure.clone()));
                 environment_inner.define(&String::from("this"), instance);
@@ -79,6 +99,7 @@ impl Function {
                     params: params.clone(),
                     body: body.clone(),
                     closure: environment,
+                    is_initializer: *is_initializer,
                 };
             }
             _ => unreachable!(),

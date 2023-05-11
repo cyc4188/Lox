@@ -7,6 +7,7 @@ enum FunctionType {
     None,
     Function,
     Method,
+    Initializer,
 }
 
 enum ClassType {
@@ -88,8 +89,9 @@ impl<'a> Resolver<'a> {
         for method in methods {
             let decl = FunctionType::Method;
             match method {
-                Stmt::FunStmt { params, body , .. } => {
-                    self.resolve_function(params, body, decl)?;
+                Stmt::FunStmt { params, body , name } => {
+                    self.resolve_function(params, body, 
+                         if name.lexeme != "init" { decl } else { FunctionType::Initializer } )?;
                 }
                 _ => unreachable!(),
             }
@@ -329,6 +331,11 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                 if let FunctionType::None = self.current_function  {
                     parse_error(keyword, "Cannot return from top-level code.");
                     self.has_error = true;
+                } else if let FunctionType::Initializer = self.current_function {
+                    if !value.is_none() {
+                        parse_error(keyword, "Cannot return a value from an initializer.");
+                        self.has_error = true;
+                    } 
                 }
                 if let Some(value) = value {
                     self.resolve_expr(value)?;
