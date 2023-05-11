@@ -357,9 +357,19 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods } => {
+            Stmt::ClassStmt { name, methods , super_class} => {
                 self.declare(name)?;
                 self.define(name)?;
+                
+                if let Some(super_class_inner) = super_class {
+                    if let Expr::Variable { name: super_name } = super_class_inner {
+                        if name.lexeme == super_name.lexeme {
+                            parse_error(name, "A class cannot inherit from itself.");
+                            self.has_error = true;
+                        }
+                    }
+                    super_class_inner.accept(self)?;
+                }
 
                 self.resolve_class(methods, ClassType::Class)?;
 

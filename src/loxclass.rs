@@ -6,17 +6,18 @@ use std::fmt::Display;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-type ClassRef = Rc<RefCell<LoxClass>>;
+pub type ClassRef = Rc<RefCell<LoxClass>>;
 
 #[derive(Debug, Clone)]
 pub struct LoxClass {
     name: String,
     pub methods: HashMap<String, Function>,
+    pub super_class: Option<ClassRef>,
 }
 
 impl LoxClass {
-    pub fn new(name: String, methods: HashMap<String, Function>) -> Self {
-        Self { name, methods }
+    pub fn new(name: String, methods: HashMap<String, Function>, super_class: Option<ClassRef>) -> Self {
+        Self { name, methods, super_class }
     }
 
     pub fn get_method(&self, name: &str) -> Option<&Function> {

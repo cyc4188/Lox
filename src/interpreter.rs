@@ -515,7 +515,19 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods } => {
+            Stmt::ClassStmt { name, methods, super_class } => {
+                let mut super_class_ref: Option<ClassRef> = None;
+                if let Some(super_class) = super_class {
+                    let super_class_obj = self.evaluate(super_class)?;
+                    if let Object::Class(super_class) = super_class_obj {
+                        super_class_ref = Some(super_class);
+                    } else {
+                        return Err(Error {
+                            message: "Superclass must be a class.".to_string(),
+                            error_type: ErrorType::RuntimeError(name.clone()),
+                        });
+                    } 
+                }
                 let mut class_methods = HashMap::new();
                 for method in methods {
                     match method {
@@ -535,7 +547,7 @@ impl stmt::Visitor<()> for Interpreter {
                 }
 
                 let class_inner = Rc::new(RefCell::new(
-                    LoxClass::new(name.lexeme.clone(), class_methods)
+                    LoxClass::new(name.lexeme.clone(), class_methods, super_class_ref)
                 ));
 
                 let class = Object::Class(class_inner);

@@ -69,6 +69,7 @@ pub enum Stmt {
     },
     ClassStmt {
         name: Token,
+        super_class: Option<Expr>,
         methods: Vec<Stmt>,
     },
 }
@@ -114,7 +115,7 @@ impl stmt::Visitor<String> for AstPrinter {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<String, Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods } => {
+            Stmt::ClassStmt { name, methods , ..} => {
                 let mut s = String::new();
                 s.push_str("class: ");
                 s.push_str(name.lexeme.as_str());

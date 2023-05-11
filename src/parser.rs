@@ -30,7 +30,7 @@ macro_rules! matches {
 /// funDecl        → "fun" function ;
 /// function       → IDENTIFIER "(" parameters? ")" block ;
 /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-/// classDecl      → "class" IDENTIFIER "{" function* "}" ;
+/// classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
 /// statement      → exprStmt
 ///                | ifStmt 
 ///                | printStmt 
@@ -102,9 +102,16 @@ impl<'a> Parser<'a> {
         res
     }
 
-    /// classDecl     → "class" IDENTIFIER "{" function* "}"
+    /// classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
     fn class_decl(&mut self) -> Result<Stmt, Error> {
         let name = self.consume(Identifier, "Expect class name.")?.clone();
+        let mut super_class: Option<Expr> = None;
+
+        if matches!(self, Less) {
+            self.consume(Identifier, "Expect superclass name.")?;
+            super_class = Some(Expr::Variable{ name: self.previous().clone() });
+        }
+
         self.consume(LeftBrace, "Expect '{' before class body.")?;
 
         // get methods
@@ -114,7 +121,7 @@ impl<'a> Parser<'a> {
         }
         self.consume(RightBrace, "Expect '}' after class body.")?;
 
-        Ok(Stmt::ClassStmt { name, methods })
+        Ok(Stmt::ClassStmt { name, super_class, methods })
     }
 
     /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
