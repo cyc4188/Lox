@@ -20,8 +20,10 @@ impl LoxClass {
         Self { name, methods, super_class }
     }
 
-    pub fn get_method(&self, name: &str) -> Option<&Function> {
-        self.methods.get(name)
+    pub fn get_method(&self, name: &str) -> Option<Function> {
+        self.methods.get(name).cloned().or_else(|| {
+            self.super_class.clone().and_then(|super_class| super_class.borrow().get_method(name))
+        })
     }
 
     pub fn arity(&self) -> usize {
