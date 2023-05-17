@@ -15,6 +15,7 @@ pub mod expr {
         fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_this_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_super_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -77,6 +78,10 @@ pub enum Expr {
     This {
         keyword: Token,
     },
+    Super {
+        keyword: Token,
+        method: Token,
+    },
 }
 
 
@@ -95,6 +100,7 @@ impl Expr {
             Expr::Get { object, name } => visitor.visit_get_expr(self),
             Expr::Set { object, name, value } => visitor.visit_set_expr(self),
             Expr::This { keyword } => visitor.visit_this_expr(self),
+            Expr::Super { keyword, method } => visitor.visit_super_expr(self),
         }
     }
 }
@@ -121,6 +127,9 @@ impl fmt::Display for Expr {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
             Expr::This { keyword } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::Super { keyword, method } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
         }
@@ -237,6 +246,14 @@ impl expr::Visitor<String> for AstPrinter {
         match expr {
             Expr::This { .. } => {
                 Ok(format!("this "))
+            }
+            _ => unreachable!()
+        }
+    }
+    fn visit_super_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Super { .. } => {
+                Ok(format!("super "))
             }
             _ => unreachable!()
         }

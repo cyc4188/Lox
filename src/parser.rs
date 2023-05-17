@@ -61,8 +61,9 @@ macro_rules! matches {
 /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
-///                | IDENTIFIER ;
+///                | IDENTIFIER 
 ///                | this
+///                | super "." primary ;
 /// arguments      | expression ( "," expression )* ;
 /// parameters     | IDENTIFIER ( "," IDENTIFIER )* ;
 impl<'a> Parser<'a> {
@@ -531,6 +532,15 @@ impl<'a> Parser<'a> {
             return Ok(
                 Expr::This { keyword: self.previous().clone() }
             );
+        }
+
+        if matches!(self, Super) {
+            let keyword = self.previous().clone();
+            self.consume(Dot, "Expect '.' after 'super'.")?;
+            let method = self.consume(Identifier, "Expect superclass method name.")?.clone();
+            return Ok(
+                Expr::Super { keyword , method }
+            )
         }
         Err(self.error(self.peak(), "Expect expression."))
         // Err(Error {

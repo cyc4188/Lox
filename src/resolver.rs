@@ -249,6 +249,14 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!()
         }
     }
+    fn visit_super_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::Super { keyword, method } => {
+                Ok(self.resolve_local(expr, keyword)?)
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl<'a> stmt::Visitor<()> for Resolver<'a> {
@@ -371,7 +379,19 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                     super_class_inner.accept(self)?;
                 }
 
+                if let Some(_) = super_class {
+                    self.begin_scope();
+                    self.scopes.last_mut().and_then(|scope| {
+                        scope.insert(String::from("super"), true);
+                        Some(())
+                    });
+                }
+
                 self.resolve_class(methods, ClassType::Class)?;
+
+                if let Some(_) = super_class {
+                    self.end_scope();
+                }
 
                 Ok(())
             }

@@ -396,6 +396,15 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!()
         }
     }
+    fn visit_super_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::Super { keyword, method } => {
+                // Ok(self.look_up_variable(keyword)?)
+                unimplemented!()
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 impl stmt::Visitor<()> for Interpreter {
@@ -528,6 +537,16 @@ impl stmt::Visitor<()> for Interpreter {
                         });
                     } 
                 }
+
+                super_class_ref.as_ref().and_then(|super_class| -> Option<_> {
+                    let sub_env = Rc::new(RefCell::new(Environment::new(Some(
+                        self.environment.clone(),
+                    ))));
+                    self.environment = sub_env.clone();
+
+                    self.environment.borrow_mut().define(&"super".to_string(), Object::Class(super_class.clone()));
+                    Some(())
+                });
                 let mut class_methods = HashMap::new();
                 for method in methods {
                     match method {
@@ -545,6 +564,12 @@ impl stmt::Visitor<()> for Interpreter {
                         _ => unreachable!(),
                     }
                 }
+
+                super_class_ref.as_ref().and_then(|_| -> Option<_> {
+                    let previous = self.environment.borrow().enclosing.as_ref().unwrap().clone();
+                    self.environment = previous;
+                    Some(())
+                });
 
                 let class_inner = Rc::new(RefCell::new(
                     LoxClass::new(name.lexeme.clone(), class_methods, super_class_ref)
