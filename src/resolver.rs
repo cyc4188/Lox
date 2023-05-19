@@ -13,6 +13,7 @@ enum FunctionType {
 enum ClassType {
     None,
     Class,
+    Subclass,
 }
 
 pub struct Resolver<'a> {
@@ -251,7 +252,14 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
     }
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
-            Expr::Super { keyword, method } => {
+            Expr::Super { keyword, .. } => {
+                if let ClassType::None = self.current_class {
+                    parse_error(keyword, "Cannot use 'super' outside of a class.");
+                    self.has_error = true;
+                } else if let ClassType::Class = self.current_class {
+                    parse_error(keyword, "Cannot use 'super' in a class with no superclass.");
+                    self.has_error = true;
+                }
                 Ok(self.resolve_local(expr, keyword)?)
             }
             _ => unreachable!()
@@ -368,6 +376,8 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
             Stmt::ClassStmt { name, methods , super_class} => {
                 self.declare(name)?;
                 self.define(name)?;
+
+                let mut current_class = ClassType::Class;
                 
                 if let Some(super_class_inner) = super_class {
                     if let Expr::Variable { name: super_name } = super_class_inner {
@@ -377,6 +387,8 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                         }
                     }
                     super_class_inner.accept(self)?;
+
+                    current_class = ClassType::Subclass;
                 }
 
                 if let Some(_) = super_class {
@@ -387,7 +399,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                     });
                 }
 
-                self.resolve_class(methods, ClassType::Class)?;
+                self.resolve_class(methods, current_class)?;
 
                 if let Some(_) = super_class {
                     self.end_scope();

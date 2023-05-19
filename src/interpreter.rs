@@ -399,8 +399,25 @@ impl expr::Visitor<Object> for Interpreter {
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
             Expr::Super { keyword, method } => {
-                // Ok(self.look_up_variable(keyword)?)
-                unimplemented!()
+                let distance = self.locals.get(keyword);
+                let super_class = self.look_up_variable(keyword)?;
+                let object = self.environment.borrow().get_at(*distance.unwrap() - 1, &"this".to_string()).unwrap();
+
+                if let Object::Class(super_class) = super_class {
+                    if let Some(method) = super_class.borrow().get_method(&method.lexeme) {
+                        Ok(Object::Callable(method.bind(object)))
+                    }
+                    else {
+                        Err(Error {
+                            message: format!("Undefined property '{}'.", method.lexeme),
+                            error_type: ErrorType::RuntimeError(method.clone()),
+                        })
+                    }
+                }
+                else {
+                    unreachable!()
+                }
+
             }
             _ => unreachable!()
         }
