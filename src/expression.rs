@@ -11,6 +11,11 @@ pub mod expr {
         fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_this_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_super_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -55,7 +60,28 @@ pub enum Expr {
         left: Box<Expr>,
         operator: Token,
         right: Box<Expr>,
-    }
+    },
+    Call {
+        callee: Box<Expr>,
+        paren: Token, // right paren
+        arguments: Vec<Expr>,
+    },
+    Get {
+        object: Box<Expr>,
+        name: Token,
+    },
+    Set {
+        object: Box<Expr>,
+        name: Token,
+        value: Box<Expr>,
+    },
+    This {
+        keyword: Token,
+    },
+    Super {
+        keyword: Token,
+        method: Token,
+    },
 }
 
 
@@ -70,11 +96,17 @@ impl Expr {
             Expr::Variable { name } => visitor.visit_variable_expr(self),
             Expr::Assign { name, value } => visitor.visit_assign_expr(self),
             Expr::Logical { left, operator, right } => visitor.visit_logic_expr(self),
+            Expr::Call { callee, paren, arguments } => visitor.visit_call_expr(self),
+            Expr::Get { object, name } => visitor.visit_get_expr(self),
+            Expr::Set { object, name, value } => visitor.visit_set_expr(self),
+            Expr::This { keyword } => visitor.visit_this_expr(self),
+            Expr::Super { keyword, method } => visitor.visit_super_expr(self),
         }
     }
 }
 
 impl fmt::Display for Expr {
+    #[allow(unused_variables)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Literal { value } => write!(f, "{}", value),
@@ -84,6 +116,22 @@ impl fmt::Display for Expr {
             Expr::Variable { name } => write!(f, "{}", name.lexeme),
             Expr::Assign { name, value } => write!(f, "({} = {})", name.lexeme, value),
             Expr::Logical { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
+            Expr::Call { callee, paren, arguments } => {
+                // println!("{}", self.accept(&mut AstPrinter).unwrap());
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::Get { object, name } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::Set { object, name, value } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::This { keyword } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::Super { keyword, method } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
         }
     }
 }
@@ -168,6 +216,48 @@ impl expr::Visitor<String> for AstPrinter {
             _ => Err(Error::new("Expected logic expression", ErrorType::SyntaxError)),
         }
     }
+    fn visit_call_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Call { callee, arguments , ..} => {
+                let callee = callee.accept(self)?;
+                let arguments = arguments.iter().map(|arg| arg.accept(self)).collect::<Result<Vec<String>, Error>>()?;
+                Ok(format!("{}({})", callee,  arguments.join(",")))
+            }
+            _ => Err(Error::new("Expected call expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_get_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Get { object, name } => {
+                Ok(format!("({}.{})", object.accept(self)?, name.lexeme))
+            }
+            _ => Err(Error::new("Expected get expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_set_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Set { object, name, value } => {
+                Ok(format!("(set: {}.{} = {})", object.accept(self)?, name, value.accept(self)?))
+            }
+            _ => Err(Error::new("Expected set expression", ErrorType::SyntaxError)),
+        }
+    }
+    fn visit_this_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::This { .. } => {
+                Ok(format!("this "))
+            }
+            _ => unreachable!()
+        }
+    }
+    fn visit_super_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Super { .. } => {
+                Ok(format!("super "))
+            }
+            _ => unreachable!()
+        }
+    }
 }
 
 
@@ -179,12 +269,12 @@ mod tests {
     fn test_expr() {
         let expr = Expr::Binary {
             left: Box::new(Expr::Unary {
-                operator: Token::new("-", TokenType::Minus, Literal::Nil, 1),
+                operator: Token::new("-", TokenType::Minus, Literal::Nil, 1, 0),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(123.0),
                 }),
             }),
-            operator: Token::new("*", TokenType::Star,  Literal::Nil, 1),
+            operator: Token::new("*", TokenType::Star,  Literal::Nil, 1, 0),
             right: Box::new(Expr::Grouping {
                 expression: Box::new(Expr::Literal {
                     value: Literal::Number(45.67),

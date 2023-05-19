@@ -32,13 +32,19 @@ cargo test
 
 - [x] Control Flow
 
-- [ ] Functions
+- [x] Functions
 
-- [ ] Resolving and Binding
+- [x] Resolving and Binding
 
-- [ ] Classes
+- [x] Classes
 
 - [ ] Inheritance
+
+### Extension
+
+- [ ] Add a standard library(math, string, etc.)
+- [ ] Add a REPL
+- [ ] Add getter and setter for class
 
 ### Bytecode VM
 

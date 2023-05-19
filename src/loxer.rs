@@ -40,16 +40,24 @@ impl Loxer {
         let mut parser = Parser::new(tokens);
         let stmts = parser.parse();
 
-        if let Ok(expr) = stmts {
-            info!("Parsed expression: {:?}", expr);
-            // let mut interpreter = Interpreter::new();
-            
-            let res = self.interpreter.interpret(&expr);
+        if let Ok(stmts) = stmts {
+            info!("Parsed expression: {}", stmts.clone().into_iter().map(|s| s.to_string()).collect::<Vec<String>>().join(" "));
+            let mut resolver = Resolver::new(&mut self.interpreter);
+            resolver.resolve_stmts(&stmts).unwrap();
+            if resolver.has_error {
+                std::process::exit(65);
+            }
+            let res: std::result::Result<(), Error> = self.interpreter.interpret(&stmts);
             if let Ok(()) = res {
 
             } else {
-                // let error = res.err().unwrap();
-                // log::error!("{}", error.message);
+                let error = res.err().unwrap();
+                if let ErrorType::RuntimeError(token) = error.error_type {
+                    eprintln!("{}",error.message);
+                    eprintln!("[line {}] Error at {}", token.line, token.lexeme);
+                } else {
+                    eprintln!("{}",error.message);
+                }
 
                 // Runtime error
                 if mode == MODE::FILE {
@@ -58,10 +66,7 @@ impl Loxer {
             }
 
         } else {
-            // let error = stmts.err().unwrap();
-            // log::error!("Error parsing expression: {:?}", error);
-
-            // Compiler error
+            // Parse error
             if mode == MODE::FILE {
                 std::process::exit(65);
             }
@@ -135,6 +140,6 @@ mod test {
         set_logger();
         info!("Running test_run())");
         let mut loxer = Loxer::new();
-        loxer.run("1+2*(3*4 - 6 / 2);", MODE::PROMPT);
+        loxer.run("print 1+2*(3*4 - 6 / 2);", MODE::PROMPT);
     }
 }

@@ -1,0 +1,12 @@
+class Test {
+    hello() {
+        print "Hello, World!";
+    }
+}
+
+var test = Test();
+test.a = 1;
+print test.a; // expect: 1
+
+test.b = Test();
+print test.b; // expect: <instance of Test>

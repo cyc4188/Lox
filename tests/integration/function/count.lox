@@ -1,0 +1,10 @@
+fun count(n) {
+  print n;
+  if (n > 1) count(n - 1);
+}
+
+count(3);
+
+// expect: 3
+// expect: 2
+// expect: 1
