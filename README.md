@@ -8,6 +8,7 @@ run in prompt:
 
 ```bash
 cargo run
+
 ```
 
 run a file:
@@ -38,11 +39,11 @@ cargo test
 
 - [x] Classes
 
-- [ ] Inheritance
+- [x] Inheritance
 
 ### Extension
 
-- [ ] Add a standard library(math, string, etc.)
+- [ ] Add a standard library(math, string, array)
 - [ ] Add a REPL
 - [ ] Add getter and setter for class
 
