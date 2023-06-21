@@ -61,10 +61,32 @@ impl NumberType {
             NumberType::Float(f) => *f,
         }
     }
-    pub fn binary_op(&self, op: Token, other: &NumberType) -> Result<Self, Error> {
+    pub fn as_integer(&self) -> i64 {
+        match self {
+            NumberType::Integer(i) => *i,
+            NumberType::Float(f) => *f as i64,
+        }
+    }
+    pub fn unary_op(&self, op: &Token) -> Result<Self, Error> {
         match op.token_type {
+            TokenType::Minus => Ok(match self {
+                NumberType::Integer(i) => NumberType::Integer(-i),
+                NumberType::Float(f) => NumberType::Float(-f),
+            }),
             _ => Err(Error {
-                message: format!("Unsupported binary operation",),
+                message: "Unsupported unary operation".to_string(),
+                error_type: ErrorType::RuntimeError(op.clone()),
+            }),
+        }
+    }
+    pub fn binary_op(&self, op: &Token, other: &NumberType) -> Result<Self, Error> {
+        match op.token_type {
+            TokenType::Plus => self.add(other),
+            TokenType::Minus => self.sub(other),
+            TokenType::Star => self.mul(other),
+            TokenType::Slash => self.div(other),
+            _ => Err(Error {
+                message: "Unsupported binary operation".to_string(),
                 error_type: ErrorType::RuntimeError(op.clone()),
             }),
         }
