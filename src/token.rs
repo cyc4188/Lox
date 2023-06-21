@@ -10,13 +10,19 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(lexeme: &str, token_type: TokenType, _literal: Literal, line: usize, column: usize) -> Self {
+    pub fn new(
+        lexeme: &str,
+        token_type: TokenType,
+        _literal: Literal,
+        line: usize,
+        column: usize,
+    ) -> Self {
         Self {
             lexeme: lexeme.to_string(),
             token_type,
             // literal,
             line,
-            column
+            column,
         }
     }
     pub fn check_single_character_token(ch: char) -> Option<TokenType> {
@@ -71,7 +77,6 @@ impl Token {
     }
 }
 
-
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.lexeme)
@@ -82,20 +87,50 @@ impl Display for Token {
 #[derive(Display, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     // Single-character tokens.
-    LeftParen, RightParen, LeftBrace, RightBrace,
-    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Slash,
+    Star,
 
     // One or two character tokens.
-    Bang, BangEqual, Equal, EqualEqual,
-    Greater, GreaterEqual, Less, LessEqual,
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 
     // Literals.
-    Identifier, String, Number,
+    Identifier,
+    String,
+    Number,
 
     // Keywords.
-    And, Class, Else, False, Fun,
-    For, If, Nil, Or, Print, Return,
-    Super, This, True, Var, While,
+    And,
+    Class,
+    Else,
+    False,
+    Fun,
+    For,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
 
     Eof,
 }
@@ -119,7 +154,7 @@ impl Display for Literal {
     }
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 pub mod test {
     #[test]
     fn test_literal() {
@@ -127,5 +162,5 @@ pub mod test {
         let num = super::Literal::Number(1.0);
         println!("literal: {}", literal);
         println!("num: {}", num)
-    }    
+    }
 }
