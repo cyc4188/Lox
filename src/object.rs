@@ -154,3 +154,12 @@ impl NumberType {
         Ok(result)
     }
 }
+
+impl Display for NumberType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumberType::Integer(i) => write!(f, "{}", i),
+            NumberType::Float(fl) => write!(f, "{}", fl),
+        }
+    }
+}
