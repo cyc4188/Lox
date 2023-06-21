@@ -245,7 +245,7 @@ impl expr::Visitor<String> for AstPrinter {
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::This { .. } => {
-                Ok(format!("this "))
+                Ok("this ".to_string())
             }
             _ => unreachable!()
         }
@@ -253,7 +253,7 @@ impl expr::Visitor<String> for AstPrinter {
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::Super { .. } => {
-                Ok(format!("super "))
+                Ok("super ".to_string())
             }
             _ => unreachable!()
         }

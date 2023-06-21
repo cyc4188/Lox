@@ -76,11 +76,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn resolve_class(
-        &mut self,
-        methods: &Vec<Stmt>,    
-        class_type: ClassType,
-    ) -> Result<(), Error> {
+    fn resolve_class(&mut self, methods: &Vec<Stmt>, class_type: ClassType) -> Result<(), Error> {
         let enclosing_class = mem::replace(&mut self.current_class, class_type);
         self.begin_scope();
         if let Some(scope) = self.scopes.last_mut() {
@@ -90,9 +86,16 @@ impl<'a> Resolver<'a> {
         for method in methods {
             let decl = FunctionType::Method;
             match method {
-                Stmt::FunStmt { params, body , name } => {
-                    self.resolve_function(params, body, 
-                         if name.lexeme != "init" { decl } else { FunctionType::Initializer } )?;
+                Stmt::FunStmt { params, body, name } => {
+                    self.resolve_function(
+                        params,
+                        body,
+                        if name.lexeme != "init" {
+                            decl
+                        } else {
+                            FunctionType::Initializer
+                        },
+                    )?;
                 }
                 _ => unreachable!(),
             }
@@ -239,7 +242,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
     }
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
-            Expr::This { keyword }  => {
+            Expr::This { keyword } => {
                 if let ClassType::None = self.current_class {
                     parse_error(keyword, "Cannot use 'this' outside of a class.");
                     self.has_error = true;
@@ -247,7 +250,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 }
                 Ok(self.resolve_local(expr, keyword)?)
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<(), Error> {
@@ -262,7 +265,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 }
                 Ok(self.resolve_local(expr, keyword)?)
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -344,14 +347,14 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     fn visit_return_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::ReturnStmt { value, keyword } => {
-                if let FunctionType::None = self.current_function  {
+                if let FunctionType::None = self.current_function {
                     parse_error(keyword, "Cannot return from top-level code.");
                     self.has_error = true;
                 } else if let FunctionType::Initializer = self.current_function {
                     if !value.is_none() {
                         parse_error(keyword, "Cannot return a value from an initializer.");
                         self.has_error = true;
-                    } 
+                    }
                 }
                 if let Some(value) = value {
                     self.resolve_expr(value)?;
@@ -373,12 +376,16 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods , super_class} => {
+            Stmt::ClassStmt {
+                name,
+                methods,
+                super_class,
+            } => {
                 self.declare(name)?;
                 self.define(name)?;
 
                 let mut current_class = ClassType::Class;
-                
+
                 if let Some(super_class_inner) = super_class {
                     if let Expr::Variable { name: super_name } = super_class_inner {
                         if name.lexeme == super_name.lexeme {
@@ -391,9 +398,9 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
                     current_class = ClassType::Subclass;
                 }
 
-                if let Some(_) = super_class {
+                if super_class.is_some() {
                     self.begin_scope();
-                    self.scopes.last_mut().and_then(|scope| {
+                    self.scopes.last_mut().map(|scope| {
                         scope.insert(String::from("super"), true);
                         Some(())
                     });
@@ -401,7 +408,7 @@ impl<'a> stmt::Visitor<()> for Resolver<'a> {
 
                 self.resolve_class(methods, current_class)?;
 
-                if let Some(_) = super_class {
+                if super_class.is_some() {
                     self.end_scope();
                 }
 

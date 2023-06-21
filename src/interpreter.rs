@@ -25,7 +25,7 @@ impl Interpreter {
                 )
             }),
         });
-        globals.borrow_mut().define(&"clock".to_string(), clock);
+        globals.borrow_mut().define("clock", clock);
 
         Self {
             environment: globals.clone(),
@@ -316,9 +316,8 @@ impl expr::Visitor<Object> for Interpreter {
                 } else if let Object::Class(class) = callee {
                     // call class init
                     // get a new instance of the class
-                    let instance = Object::Instance(Rc::new(RefCell::new(LoxInstance::new(
-                        class.clone(),
-                    ))));
+                    let instance =
+                        Object::Instance(Rc::new(RefCell::new(LoxInstance::new(class.clone()))));
                     if let Some(initializer) = class.borrow().get_method("init") {
                         if initializer.arity() != args.len() {
                             return Err(Error {
@@ -356,44 +355,45 @@ impl expr::Visitor<Object> for Interpreter {
                         Err(Error {
                             message: format!("Undefined property '{}'.", name.lexeme),
                             error_type: ErrorType::RuntimeError(name.clone()),
-                        }) 
+                        })
                     }
                 } else {
                     Err(Error {
                         message: "Only instances have properties.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
-                } 
+                }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_set_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Set { object, name, value } => {
+            Expr::Set {
+                object,
+                name,
+                value,
+            } => {
                 // object.name = value
                 let object = object.accept(self)?;
                 if let Object::Instance(instance) = object {
-                    let value = self.evaluate(value)?; 
+                    let value = self.evaluate(value)?;
                     instance.borrow_mut().set(&name.lexeme, &value);
                     Ok(value)
-                }
-                else {
+                } else {
                     Err(Error {
                         message: "Only instances have fields.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
                 }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::This { keyword } => {
-                Ok(self.look_up_variable(keyword)?)
-            }
-            _ => unreachable!()
+            Expr::This { keyword } => Ok(self.look_up_variable(keyword)?),
+            _ => unreachable!(),
         }
     }
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
@@ -401,25 +401,26 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Super { keyword, method } => {
                 let distance = self.locals.get(keyword);
                 let super_class = self.look_up_variable(keyword)?;
-                let object = self.environment.borrow().get_at(*distance.unwrap() - 1, &"this".to_string()).unwrap();
+                let object = self
+                    .environment
+                    .borrow()
+                    .get_at(*distance.unwrap() - 1, "this")
+                    .unwrap();
 
                 if let Object::Class(super_class) = super_class {
                     if let Some(method) = super_class.borrow().get_method(&method.lexeme) {
                         Ok(Object::Callable(method.bind(object)))
-                    }
-                    else {
+                    } else {
                         Err(Error {
                             message: format!("Undefined property '{}'.", method.lexeme),
                             error_type: ErrorType::RuntimeError(method.clone()),
                         })
                     }
-                }
-                else {
+                } else {
                     unreachable!()
                 }
-
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -541,7 +542,11 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods, super_class } => {
+            Stmt::ClassStmt {
+                name,
+                methods,
+                super_class,
+            } => {
                 let mut super_class_ref: Option<ClassRef> = None;
                 if let Some(super_class) = super_class {
                     let super_class_obj = self.evaluate(super_class)?;
@@ -552,28 +557,30 @@ impl stmt::Visitor<()> for Interpreter {
                             message: "Superclass must be a class.".to_string(),
                             error_type: ErrorType::RuntimeError(name.clone()),
                         });
-                    } 
+                    }
                 }
 
-                super_class_ref.as_ref().and_then(|super_class| -> Option<_> {
+                super_class_ref.as_ref().map(|super_class| -> Option<_> {
                     let sub_env = Rc::new(RefCell::new(Environment::new(Some(
                         self.environment.clone(),
                     ))));
-                    self.environment = sub_env.clone();
+                    self.environment = sub_env;
 
-                    self.environment.borrow_mut().define(&"super".to_string(), Object::Class(super_class.clone()));
+                    self.environment
+                        .borrow_mut()
+                        .define("super", Object::Class(super_class.clone()));
                     Some(())
                 });
                 let mut class_methods = HashMap::new();
                 for method in methods {
                     match method {
                         Stmt::FunStmt { name, params, body } => {
-                            let function = Function::UserDefined { 
-                                name: name.clone(), 
-                                params: params.clone(), 
-                                body: body.clone(), 
+                            let function = Function::UserDefined {
+                                name: name.clone(),
+                                params: params.clone(),
+                                body: body.clone(),
                                 closure: self.environment.clone(),
-                                is_initializer: name.lexeme=="init",
+                                is_initializer: name.lexeme == "init",
                             };
 
                             class_methods.insert(name.lexeme.clone(), function);
@@ -582,15 +589,23 @@ impl stmt::Visitor<()> for Interpreter {
                     }
                 }
 
-                super_class_ref.as_ref().and_then(|_| -> Option<_> {
-                    let previous = self.environment.borrow().enclosing.as_ref().unwrap().clone();
+                super_class_ref.as_ref().map(|_| -> Option<_> {
+                    let previous = self
+                        .environment
+                        .borrow()
+                        .enclosing
+                        .as_ref()
+                        .unwrap()
+                        .clone();
                     self.environment = previous;
                     Some(())
                 });
 
-                let class_inner = Rc::new(RefCell::new(
-                    LoxClass::new(name.lexeme.clone(), class_methods, super_class_ref)
-                ));
+                let class_inner = Rc::new(RefCell::new(LoxClass::new(
+                    name.lexeme.clone(),
+                    class_methods,
+                    super_class_ref,
+                )));
 
                 let class = Object::Class(class_inner);
                 self.environment.borrow_mut().define(&name.lexeme, class);

@@ -47,29 +47,24 @@ impl Function {
                 }
 
                 if let Err(err) = interpreter.execute_block(body, environment) {
-                    if *is_initializer == true {
-                        return Ok(
-                            closure
-                                .borrow()
-                                .get_at(0, &String::from("this")).unwrap_or(Object::Nil)
-                        );
+                    if *is_initializer {
+                        return Ok(closure
+                            .borrow()
+                            .get_at(0, &String::from("this"))
+                            .unwrap_or(Object::Nil));
                     }
                     // normal function
                     match err.error_type {
                         ErrorType::Return(value) => Ok(value),
                         _ => Err(err),
                     }
+                } else if *is_initializer {
+                    Ok(closure
+                        .borrow()
+                        .get_at(0, &String::from("this"))
+                        .unwrap_or(Object::Nil))
                 } else {
-                    if *is_initializer == true {
-                        Ok(
-                            closure
-                                .borrow()
-                                .get_at(0, &String::from("this")).unwrap_or(Object::Nil)
-                        )
-                    }
-                    else {
-                        Ok(Object::Nil)
-                    }
+                    Ok(Object::Nil)
                 }
             }
         }
@@ -94,13 +89,13 @@ impl Function {
                 let mut environment_inner = Environment::new(Some(closure.clone()));
                 environment_inner.define(&String::from("this"), instance);
                 let environment = Rc::new(RefCell::new(environment_inner));
-                return Function::UserDefined {
+                Function::UserDefined {
                     name: name.clone(),
                     params: params.clone(),
                     body: body.clone(),
                     closure: environment,
                     is_initializer: *is_initializer,
-                };
+                }
             }
             _ => unreachable!(),
         }
