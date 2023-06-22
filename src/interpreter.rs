@@ -17,12 +17,12 @@ impl Interpreter {
             name: "clock".to_string(),
             arity: 0,
             body: Box::new(|_: &Vec<Object>| -> Object {
-                Object::Number(
+                Object::Number(NumberType::Float(
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs_f64(),
-                )
+                ))
             }),
         });
         globals.borrow_mut().define("clock", clock);
@@ -124,7 +124,7 @@ impl expr::Visitor<Object> for Interpreter {
         match value {
             Literal::Boolean(b) => Ok(Object::Boolean(*b)),
             Literal::Nil => Ok(Object::Nil),
-            Literal::Number(n) => Ok(Object::Number(*n)),
+            Literal::Number(n) => Ok(Object::Number(*n)), // TODO
             Literal::String(s) => Ok(Object::String(s.clone())),
         }
     }
@@ -138,7 +138,7 @@ impl expr::Visitor<Object> for Interpreter {
                     TokenType::Minus => {
                         match right {
                             // check if right is a number
-                            Object::Number(n) => Ok(Object::Number(-n)),
+                            Object::Number(n) => Ok(Object::Number(n.unary_op(operator)?)),
                             _ => self.number_operand_error(operator),
                         }
                     }
@@ -160,11 +160,15 @@ impl expr::Visitor<Object> for Interpreter {
                 let right = self.evaluate(right)?;
                 match operator.token_type {
                     TokenType::Minus => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l - r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Plus => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l + r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::String(l + &r)),
                         _ => Err(Error {
                             message: format!(
@@ -175,30 +179,40 @@ impl expr::Visitor<Object> for Interpreter {
                         }),
                     },
                     TokenType::Slash => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l / r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Star => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l * r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Greater => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l > r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.greater(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l > r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::GreaterEqual => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l >= r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.greater_equal(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l >= r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Less => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l < r)),
+                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l.less(&r)?)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l < r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::LessEqual => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l <= r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.less_equal(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l <= r)),
                         _ => self.number_operand_error(operator),
                     },

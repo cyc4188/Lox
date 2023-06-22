@@ -14,7 +14,7 @@ type InstanceRef = Rc<RefCell<LoxInstance>>;
 
 #[derive(Debug, Clone)]
 pub enum Object {
-    Number(f64),
+    Number(NumberType),
     String(String),
     Boolean(bool),
     Callable(Function),
@@ -49,6 +49,7 @@ impl Object {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum NumberType {
     Integer(i64),
     Float(f64),
@@ -152,6 +153,58 @@ impl NumberType {
             },
         };
         Ok(result)
+    }
+    pub fn greater(&self, other: &NumberType) -> Result<bool, Error> {
+        use NumberType::{Float, Integer};
+        Ok(match self {
+            Integer(i) => match other {
+                Integer(j) => i > j,
+                Float(f) => (*i as f64) > *f,
+            },
+            Float(f) => match other {
+                Integer(i) => *f > (*i as f64),
+                Float(g) => f > g,
+            },
+        })
+    }
+    pub fn greater_equal(&self, other: &NumberType) -> Result<bool, Error> {
+        use NumberType::{Float, Integer};
+        Ok(match self {
+            Integer(i) => match other {
+                Integer(j) => i >= j,
+                Float(f) => (*i as f64) >= *f,
+            },
+            Float(f) => match other {
+                Integer(i) => *f >= (*i as f64),
+                Float(g) => f >= g,
+            },
+        })
+    }
+    pub fn less(&self, other: &NumberType) -> Result<bool, Error> {
+        use NumberType::{Float, Integer};
+        Ok(match self {
+            Integer(i) => match other {
+                Integer(j) => i < j,
+                Float(f) => (*i as f64) < *f,
+            },
+            Float(f) => match other {
+                Integer(i) => *f < (*i as f64),
+                Float(g) => f < g,
+            },
+        })
+    }
+    pub fn less_equal(&self, other: &NumberType) -> Result<bool, Error> {
+        use NumberType::{Float, Integer};
+        Ok(match self {
+            Integer(i) => match other {
+                Integer(j) => i <= j,
+                Float(f) => (*i as f64) <= *f,
+            },
+            Float(f) => match other {
+                Integer(i) => *f <= (*i as f64),
+                Float(g) => f <= g,
+            },
+        })
     }
 }
 
