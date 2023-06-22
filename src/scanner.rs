@@ -31,13 +31,12 @@ impl Scanner {
         while !self.is_end() {
             self.scan_token();
             self.start = self.current;
-        } 
-        self.tokens.push(self.get_token(TokenType::Eof, Literal::Nil));
+        }
+        self.tokens.push(self.get_token(TokenType::Eof));
     }
 
-
     /// return a token, this is where the magic happens
-    fn scan_token(&mut self)  {
+    fn scan_token(&mut self) {
         let c = self.consume();
 
         // check if the character is a single character token
@@ -49,20 +48,23 @@ impl Scanner {
         // deal with operators
         if let Some(token_type) = Token::check_operator(c, self.peak()) {
             match token_type {
-                TokenType::BangEqual | TokenType::EqualEqual | TokenType::GreaterEqual | TokenType::LessEqual => {
+                TokenType::BangEqual
+                | TokenType::EqualEqual
+                | TokenType::GreaterEqual
+                | TokenType::LessEqual => {
                     self.consume();
                 }
                 _ => {}
             }
             self.add_token(token_type, Literal::Nil);
             return;
-        } 
+        }
 
         // longer tokens
         // /, //, \r, \t, ' ', \n
         // 'string'
         match c {
-            '/' => { 
+            '/' => {
                 if self.mat('/') {
                     // a comment goes until the end of the line
                     while self.peak() != '\n' && !self.is_end() {
@@ -72,45 +74,45 @@ impl Scanner {
                     self.add_token(TokenType::Slash, Literal::Nil);
                 }
             }
-            ' ' | '\r' | '\t' => {
-            }
+            ' ' | '\r' | '\t' => {}
             '\n' => {
                 self.line += 1;
                 self.column = 1;
             }
-            '"' => { // String
+            '"' => {
+                // String
                 self.check_string();
             }
-            '0'..='9' => { // Number
+            '0'..='9' => {
+                // Number
                 self.check_number();
             }
-            'a'..='z' | 'A'..='Z' | '_' => { // Identifier or Keyword
+            'a'..='z' | 'A'..='Z' | '_' => {
+                // Identifier or Keyword
                 self.check_identifier();
             }
             _ => {
                 self.error(self.line, "Unexpected character.");
             }
         };
-
     }
 
     /// return a token, according to token_type and literal
-    fn get_token(&self, token_type: TokenType, literal: Literal) -> Token {
+    fn get_token(&self, token_type: TokenType) -> Token {
         log::trace!("{}", &self.source[self.start..self.current]);
         Token::new(
-            &self.source[self.start..self.current], 
-            token_type, 
-            literal, 
+            &self.source[self.start..self.current],
+            token_type,
             self.line,
-            self.column
+            self.column,
         )
     }
 
     /// add a token to the tokens vector
     fn add_token(&mut self, token_type: TokenType, literal: Literal) {
-        self.tokens.push(self.get_token(token_type, literal));
+        self.tokens.push(self.get_token(token_type));
     }
-    
+
     /// return true if we have reached the end of the source code
     fn is_end(&self) -> bool {
         self.current >= self.source.len()
@@ -133,14 +135,13 @@ impl Scanner {
             self.source.chars().nth(self.current + 1).unwrap()
         }
     }
-    
+
     /// return the current character and advance the current position
     fn consume(&mut self) -> char {
         let c = self.peak();
         self.current += 1;
         c
     }
-
 
     /// return true if the next character is expected
     /// if true, advance the current position
@@ -184,7 +185,7 @@ impl Scanner {
         }
 
         // look for a fractional part
-        if self.peak() == '.' && is_digit(self.peak_next()){
+        if self.peak() == '.' && is_digit(self.peak_next()) {
             // consume the "."
             self.consume();
 
@@ -194,7 +195,7 @@ impl Scanner {
         }
 
         let value = &self.source[self.start..self.current];
-        self.add_token(TokenType::Number, Literal::Number(value.parse().unwrap()));
+        self.add_token(TokenType::Number, Literal::Nil);
     }
 
     fn check_identifier(&mut self) {
@@ -213,16 +214,17 @@ impl Scanner {
                 _ => Literal::Nil,
             };
             self.add_token(token_type, literal);
-        }
-        else {
+        } else {
             //identifier
             self.add_token(TokenType::Identifier, Literal::Nil);
         }
     }
 
-
     fn error(&mut self, line: usize, message: &str) {
-        self.errors.push(Error { message: message.to_string(), error_type: ErrorType::ScanError(line) });
+        self.errors.push(Error {
+            message: message.to_string(),
+            error_type: ErrorType::ScanError(line),
+        });
         self.had_error = true;
     }
 
@@ -235,7 +237,6 @@ impl Scanner {
             }
         }
     }
-
 }
 
 #[cfg(test)]
@@ -256,18 +257,20 @@ mod tests {
         assert_eq!(scanner.tokens.len(), 7);
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
 
     #[test]
     fn test_longer_tokens() {
-        let mut scanner = Scanner::new("// this is a comment
+        let mut scanner = Scanner::new(
+            "// this is a comment
 (( )){} // grouping stuff
-!*+-/=<> <= == // operators");
+!*+-/=<> <= == // operators",
+        );
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
 
     #[test]
@@ -276,7 +279,7 @@ mod tests {
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
     #[test]
     fn test_number() {
@@ -284,15 +287,17 @@ mod tests {
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
     #[test]
     fn test_keyword() {
-        let mut scanner = Scanner::new("and class else false fun for if nil or print return super this true var while");
+        let mut scanner = Scanner::new(
+            "and class else false fun for if nil or print return super this true var while",
+        );
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
     #[test]
     fn test_identifier() {
@@ -300,7 +305,6 @@ mod tests {
         scanner.scan_tokens();
         for token in scanner.tokens.iter() {
             println!("{:?}", token);
-        } 
+        }
     }
 }
-

@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::NumberType;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Token {
     pub lexeme: String,
@@ -10,17 +12,10 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(
-        lexeme: &str,
-        token_type: TokenType,
-        _literal: Literal,
-        line: usize,
-        column: usize,
-    ) -> Self {
+    pub fn new(lexeme: &str, token_type: TokenType, line: usize, column: usize) -> Self {
         Self {
             lexeme: lexeme.to_string(),
             token_type,
-            // literal,
             line,
             column,
         }
@@ -138,7 +133,7 @@ pub enum TokenType {
 #[derive(Clone, Debug)]
 pub enum Literal {
     String(String),
-    Number(f64),
+    Number(NumberType),
     Boolean(bool),
     Nil,
 }
@@ -156,10 +151,12 @@ impl Display for Literal {
 
 #[cfg(test)]
 pub mod test {
+    use crate::NumberType;
+
     #[test]
     fn test_literal() {
         let literal = super::Literal::String("hello".to_string());
-        let num = super::Literal::Number(1.0);
+        let num = super::Literal::Number(NumberType::Float(1.0));
         println!("literal: {}", literal);
         println!("num: {}", num)
     }
