@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt::{self};
+use std::fmt;
 
 pub mod expr {
     use super::{Error, Expr, Literal};
@@ -11,6 +11,7 @@ pub mod expr {
         fn visit_variable_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_assign_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_logic_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_index_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
@@ -61,6 +62,11 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
+    Index {
+        left: Box<Expr>,
+        operator: Token,
+        index: Box<Expr>,
+    },
     Call {
         callee: Box<Expr>,
         paren: Token, // right paren
@@ -103,6 +109,11 @@ impl Expr {
                 operator,
                 right,
             } => visitor.visit_logic_expr(self),
+            Expr::Index {
+                left,
+                operator,
+                index: right,
+            } => visitor.visit_index_expr(self),
             Expr::Call {
                 callee,
                 paren,
@@ -139,6 +150,13 @@ impl fmt::Display for Expr {
                 operator,
                 right,
             } => write!(f, "({} {} {})", left, operator, right),
+            Expr::Index {
+                left,
+                operator,
+                index: right,
+            } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
             Expr::Call {
                 callee,
                 paren,
@@ -266,6 +284,17 @@ impl expr::Visitor<String> for AstPrinter {
             }
             _ => Err(Error::new(
                 "Expected logic expression",
+                ErrorType::SyntaxError,
+            )),
+        }
+    }
+    fn visit_index_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::Index {
+                left, index: right, ..
+            } => Ok(format!("{}[{}]", left.accept(self)?, right.accept(self)?,)),
+            _ => Err(Error::new(
+                "Expected index expression",
                 ErrorType::SyntaxError,
             )),
         }

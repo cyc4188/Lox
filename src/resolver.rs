@@ -176,6 +176,18 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!(),
         }
     }
+    fn visit_index_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::Index {
+                left, index: right, ..
+            } => {
+                self.resolve_expr(left)?;
+                self.resolve_expr(right)?;
+                Ok(())
+            }
+            _ => unreachable!(),
+        }
+    }
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
             Expr::Call {

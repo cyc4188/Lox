@@ -294,7 +294,58 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!(),
         }
     }
+    fn visit_index_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        trace!("visit_index_expr: {}", expr);
+        match expr {
+            Expr::Index {
+                left,
+                operator,
+                index: right,
+            } => {
+                // evaluate left
+                let left = self.evaluate(left)?;
+                let right = self.evaluate(right)?;
+                let nth: i64;
+                // check if right is a Number
+                if let Object::Number(n) = right {
+                    if let NumberType::Integer(i) = n {
+                        nth = i;
+                    } else {
+                        return Err(Error {
+                            message: format!("Expected integer got {}", n),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                } else {
+                    return Err(Error {
+                        message: format!("Expected integer got {}", right),
+                        error_type: ErrorType::RuntimeError(operator.clone()),
+                    });
+                }
 
+                // check if left is a String
+                if let Object::String(s) = left {
+                    // check if nth is in range
+                    if s.len() <= nth as usize {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", nth),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                    // return the nth character
+                    return Ok(Object::String(
+                        s.chars().nth(nth as usize).unwrap().to_string(),
+                    ));
+                }
+                Err(Error {
+                    message: format!("Expected string got {}", left),
+                    error_type: ErrorType::RuntimeError(operator.clone()),
+                })
+                // check if left if an Array TOOD
+            }
+            _ => unreachable!(),
+        }
+    }
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         trace!("visit_call_expr");
         match expr {

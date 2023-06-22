@@ -24,6 +24,8 @@ impl Token {
         match ch {
             '(' => Some(TokenType::LeftParen),
             ')' => Some(TokenType::RightParen),
+            '[' => Some(TokenType::LeftBracket),
+            ']' => Some(TokenType::RightBracket),
             '{' => Some(TokenType::LeftBrace),
             '}' => Some(TokenType::RightBrace),
             ',' => Some(TokenType::Comma),
@@ -84,6 +86,8 @@ pub enum TokenType {
     // Single-character tokens.
     LeftParen,
     RightParen,
+    LeftBracket,
+    RightBracket,
     LeftBrace,
     RightBrace,
     Comma,

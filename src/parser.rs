@@ -57,8 +57,8 @@ macro_rules! matches {
 /// term           → factor ( ( "-" | "+" ) factor )* ;
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
-///                | call ;
-/// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+///                | call_index ;
+/// call_index           → index ( "(" arguments? ")" | "." IDENTIFIER )* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER
@@ -475,7 +475,7 @@ impl<'a> Parser<'a> {
     }
 
     /// unary          → ( "!" | "-" ) unary
-    ///                | call ;
+    ///                | call_index ;
     fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
@@ -485,21 +485,23 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             });
         }
-        self.call()
+        self.call_index()
     }
-
-    /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
-    fn call(&mut self) -> Result<Expr, Error> {
+    /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER | "["  "]")* ;
+    fn call_index(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
-        while matches!(self, LeftParen, Dot) {
-            if self.previous().token_type == LeftParen {
+        while matches!(self, LeftParen, Dot, LeftBracket) {
+            let previous_token_type = self.previous().token_type.clone();
+            if previous_token_type == LeftParen {
                 expr = self.finish_call(expr)?;
-            } else {
+            } else if previous_token_type == Dot {
                 let name = self.consume(Identifier, "Expect property name after '.'.")?;
                 expr = Expr::Get {
                     object: Box::new(expr),
                     name: name.clone(),
                 };
+            } else if previous_token_type == LeftBracket {
+                expr = self.finish_index(expr)?;
             }
         }
         Ok(expr)
@@ -652,6 +654,16 @@ impl<'a> Parser<'a> {
 
             self.advance();
         }
+    }
+
+    fn finish_index(&mut self, expr: Expr) -> Result<Expr, Error> {
+        let index = self.expression()?;
+        self.consume(RightBracket, "Expect ']' after index.")?;
+        Ok(Expr::Index {
+            left: Box::new(expr),
+            operator: self.previous().clone(),
+            index: Box::new(index),
+        })
     }
 
     fn finish_call(&mut self, expr: Expr) -> Result<Expr, Error> {
