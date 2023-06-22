@@ -143,7 +143,11 @@ impl NumberType {
                             error_type: ErrorType::SyntaxError,
                         });
                     }
-                    Integer(i / j)
+                    if (i % j) == 0 {
+                        Integer(i / j)
+                    } else {
+                        Float((*i as f64) / (*j as f64))
+                    }
                 }
                 Float(f) => Float(*i as f64 / f),
             },
