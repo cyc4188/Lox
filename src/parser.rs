@@ -58,7 +58,7 @@ macro_rules! matches {
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
 ///                | call_index ;
-/// call_index           → index ( "(" arguments? ")" | "." IDENTIFIER )* ;
+/// call_index     → index ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER
@@ -487,7 +487,7 @@ impl<'a> Parser<'a> {
         }
         self.call_index()
     }
-    /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER | "["  "]")* ;
+    /// call_index           → primary ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
     fn call_index(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
         while matches!(self, LeftParen, Dot, LeftBracket) {

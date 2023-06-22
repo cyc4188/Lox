@@ -300,11 +300,11 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Index {
                 left,
                 operator,
-                index: right,
+                index,
             } => {
                 // evaluate left
                 let left = self.evaluate(left)?;
-                let right = self.evaluate(right)?;
+                let right = self.evaluate(index)?;
                 let nth: i64;
                 // check if right is a Number
                 if let Object::Number(n) = right {
@@ -326,7 +326,7 @@ impl expr::Visitor<Object> for Interpreter {
                 // check if left is a String
                 if let Object::String(s) = left {
                     // check if nth is in range
-                    if s.len() <= nth as usize {
+                    if s.len() <= nth as usize || nth < 0 {
                         return Err(Error {
                             message: format!("Index out of range: {}", nth),
                             error_type: ErrorType::RuntimeError(operator.clone()),
