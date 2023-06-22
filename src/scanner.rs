@@ -194,7 +194,6 @@ impl Scanner {
             }
         }
 
-        let value = &self.source[self.start..self.current];
         self.add_token(TokenType::Number, Literal::Nil);
     }
 

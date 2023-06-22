@@ -49,7 +49,7 @@ impl Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum NumberType {
     Integer(i64),
     Float(f64),
