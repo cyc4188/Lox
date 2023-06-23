@@ -305,7 +305,7 @@ impl expr::Visitor<Object> for Interpreter {
         trace!("visit_index_expr: {}", expr);
         match expr {
             Expr::Index {
-                left,
+                object: left,
                 operator,
                 index,
                 index_end,
@@ -483,6 +483,20 @@ impl expr::Visitor<Object> for Interpreter {
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
                 }
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::IndexSet {
+                object,
+                index,
+                index_end,
+                value,
+            } => {
+                // TODO
+                unimplemented!()
             }
             _ => unreachable!(),
         }

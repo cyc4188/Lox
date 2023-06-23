@@ -15,6 +15,7 @@ pub mod expr {
         fn visit_call_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_get_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_this_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_super_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
@@ -63,7 +64,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     Index {
-        left: Box<Expr>,
+        object: Box<Expr>,
         operator: Token,
         index: Box<Expr>,
         index_end: Option<Box<Expr>>,
@@ -80,6 +81,12 @@ pub enum Expr {
     Set {
         object: Box<Expr>,
         name: Token,
+        value: Box<Expr>,
+    },
+    IndexSet {
+        object: Box<Expr>,
+        index: Box<Expr>,
+        index_end: Option<Box<Expr>>,
         value: Box<Expr>,
     },
     This {
@@ -111,7 +118,7 @@ impl Expr {
                 right,
             } => visitor.visit_logic_expr(self),
             Expr::Index {
-                left,
+                object: left,
                 operator,
                 index: right,
                 index_end,
@@ -127,6 +134,7 @@ impl Expr {
                 name,
                 value,
             } => visitor.visit_set_expr(self),
+            Expr::IndexSet { .. } => visitor.visit_index_set_expr(self),
             Expr::This { keyword } => visitor.visit_this_expr(self),
             Expr::Super { keyword, method } => visitor.visit_super_expr(self),
         }
@@ -153,7 +161,7 @@ impl fmt::Display for Expr {
                 right,
             } => write!(f, "({} {} {})", left, operator, right),
             Expr::Index {
-                left,
+                object: left,
                 operator,
                 index: right,
                 index_end,
@@ -176,6 +184,9 @@ impl fmt::Display for Expr {
                 name,
                 value,
             } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::IndexSet { .. } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
             Expr::This { keyword } => {
@@ -294,7 +305,9 @@ impl expr::Visitor<String> for AstPrinter {
     fn visit_index_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::Index {
-                left, index: right, ..
+                object: left,
+                index: right,
+                ..
             } => Ok(format!("{}[{}]", left.accept(self)?, right.accept(self)?,)),
             _ => Err(Error::new(
                 "Expected index expression",
@@ -345,6 +358,18 @@ impl expr::Visitor<String> for AstPrinter {
                 "Expected set expression",
                 ErrorType::SyntaxError,
             )),
+        }
+    }
+    fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::IndexSet {
+                object,
+                index,
+                index_end,
+                value,
+                ..
+            } => Ok(format!("{}[{}] = {}", object, index, value)),
+            _ => unreachable!(),
         }
     }
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<String, Error> {

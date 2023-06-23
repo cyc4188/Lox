@@ -179,10 +179,16 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
     fn visit_index_expr(&mut self, expr: &Expr) -> Result<(), Error> {
         match expr {
             Expr::Index {
-                left, index: right, ..
+                object: left,
+                index: right,
+                index_end,
+                ..
             } => {
                 self.resolve_expr(left)?;
                 self.resolve_expr(right)?;
+                if let Some(index_end) = index_end {
+                    self.resolve_expr(index_end)?;
+                }
                 Ok(())
             }
             _ => unreachable!(),
@@ -237,6 +243,25 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
         match expr {
             Expr::Get { object, .. } => {
                 self.resolve_expr(object)?;
+                Ok(())
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::IndexSet {
+                object,
+                index,
+                index_end,
+                value,
+            } => {
+                self.resolve_expr(object)?;
+                self.resolve_expr(index)?;
+                if let Some(index_end) = index_end {
+                    self.resolve_expr(index_end)?;
+                }
+                self.resolve_expr(value)?;
                 Ok(())
             }
             _ => unreachable!(),

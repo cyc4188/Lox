@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
         };
         self.consume(RightBracket, "Expect ']' after index.")?;
         Ok(Expr::Index {
-            left: Box::new(expr),
+            object: Box::new(expr),
             operator: self.previous().clone(),
             index: Box::new(index),
             index_end,
