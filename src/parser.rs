@@ -373,6 +373,20 @@ impl<'a> Parser<'a> {
                     name,
                     value: Box::new(value),
                 });
+            } else if let Ok(Expr::Index {
+                object,
+                index,
+                index_end,
+                operator,
+            }) = expr
+            {
+                return Ok(Expr::IndexSet {
+                    object,
+                    index,
+                    index_end,
+                    value: Box::new(value),
+                    operator,
+                });
             }
             return Err(self.error(self.previous(), "Invalid assignment target."));
         }

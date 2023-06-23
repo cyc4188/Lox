@@ -27,6 +27,14 @@ impl List {
         }
     }
 
+    pub fn slice_change(&mut self, start: usize, end: usize, new: &Self) {
+        self.inner.splice(start..end, new.inner.clone());
+    }
+
+    pub fn slice_change_obj(&mut self, start: usize, end: usize, new: Object) {
+        self.inner.splice(start..end, vec![new]);
+    }
+
     pub fn add(&self, other: &Self) -> Self {
         let mut new_list = self.clone();
         new_list.inner.extend(other.inner.clone());

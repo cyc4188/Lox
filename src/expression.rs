@@ -89,6 +89,7 @@ pub enum Expr {
         index: Box<Expr>,
         index_end: Option<Box<Expr>>,
         value: Box<Expr>,
+        operator: Token,
     },
     This {
         keyword: Token,

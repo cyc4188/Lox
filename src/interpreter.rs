@@ -537,9 +537,85 @@ impl expr::Visitor<Object> for Interpreter {
                 index,
                 index_end,
                 value,
+                operator,
             } => {
-                // TODO
-                unimplemented!()
+                let object = self.evaluate(object)?;
+                match object {
+                    Object::List(list) => {
+                        let index = self.evaluate(index)?;
+                        let index_end = match index_end {
+                            Some(index_end) => Some(self.evaluate(index_end)?),
+                            None => None,
+                        };
+                        let start: i64;
+                        // check if right is a Number
+                        if let Some(n) = Interpreter::check_integer(&index) {
+                            start = n;
+                        } else {
+                            return Err(Error {
+                                message: format!("Expected integer got {}", index),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+
+                        let mut end: i64 = start + 1;
+                        let mut is_slice: bool = false;
+                        if let Some(index_end) = index_end {
+                            is_slice = true;
+                            if let Some(n) = Interpreter::check_integer(&index_end) {
+                                end = n;
+                            } else {
+                                return Err(Error {
+                                    message: format!("Expected integer got {}", index_end),
+                                    error_type: ErrorType::RuntimeError(operator.clone()),
+                                });
+                            }
+                        }
+
+                        // check if nth is in range
+                        if list.borrow().inner.len() <= start as usize || start < 0 {
+                            return Err(Error {
+                                message: format!("Index out of range: {}", start),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+                        if list.borrow().inner.len() < end as usize || end < 0 {
+                            return Err(Error {
+                                message: format!("Index out of range: {}", end),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+
+                        let value = self.evaluate(value)?;
+                        if !is_slice {
+                            // return the nth element
+                            list.borrow_mut().inner[start as usize] = value.clone();
+                            return Ok(value);
+                        }
+
+                        // 修改一个连续区间
+                        if let Object::List(other) = value.clone() {
+                            list.borrow_mut().slice_change(
+                                start as usize,
+                                end as usize,
+                                &other.borrow(),
+                            );
+                            return Ok(value);
+                        } else {
+                            list.borrow_mut().slice_change_obj(
+                                start as usize,
+                                end as usize,
+                                value.clone(),
+                            );
+                        }
+
+                        Ok(value)
+                    }
+                    _ => Err(Error {
+                        message: format!("Expected list got {}", object),
+                        error_type: ErrorType::RuntimeError(operator.clone()),
+                    }),
+                }
             }
             _ => unreachable!(),
         }

@@ -255,6 +255,7 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
                 index,
                 index_end,
                 value,
+                ..
             } => {
                 self.resolve_expr(object)?;
                 self.resolve_expr(index)?;
