@@ -178,6 +178,14 @@ impl expr::Visitor<Object> for Interpreter {
                             Ok(Object::Number(l.binary_op(operator, &r)?))
                         }
                         (Object::String(l), Object::String(r)) => Ok(Object::String(l + &r)),
+                        (Object::List(list), Object::List(r)) => Ok(Object::List(Rc::new(
+                            RefCell::new(list.borrow().add(&r.borrow())),
+                        ))),
+                        (Object::List(list), obj) => {
+                            let mut new_list = list.borrow().clone();
+                            new_list.push(obj);
+                            Ok(Object::List(Rc::new(RefCell::new(new_list))))
+                        }
                         _ => Err(Error {
                             message: format!(
                                 "Operands of {} must be two numbers or two strings.",
@@ -330,7 +338,9 @@ impl expr::Visitor<Object> for Interpreter {
                 }
 
                 let mut end: i64 = start + 1;
+                let mut is_slice: bool = false;
                 if let Some(index_end) = index_end {
+                    is_slice = true;
                     if let Some(n) = Interpreter::check_integer(&index_end) {
                         end = n;
                     } else {
@@ -370,6 +380,38 @@ impl expr::Visitor<Object> for Interpreter {
                             .collect(),
                     ));
                 }
+                // check if left is a List
+                if let Object::List(list) = left {
+                    // check if nth is in range
+                    if list.borrow().inner.len() <= start as usize || start < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", start),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                    if list.borrow().inner.len() < end as usize || end < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", end),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+
+                    // 空列表
+                    if start >= end {
+                        return Ok(Object::List(Rc::new(RefCell::new(List::new()))));
+                    }
+
+                    if !is_slice {
+                        // return the nth element
+                        return Ok(list.borrow().get(start as usize).clone());
+                    }
+
+                    // return the sublist
+                    return Ok(Object::List(Rc::new(RefCell::new(
+                        list.borrow().slice(start as usize, end as usize),
+                    ))));
+                }
+
                 Err(Error {
                     message: format!("Expected string got {}", left),
                     error_type: ErrorType::RuntimeError(operator.clone()),

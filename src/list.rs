@@ -17,6 +17,10 @@ impl List {
         self.inner.push(obj);
     }
 
+    pub fn get(&self, index: usize) -> &Object {
+        self.inner.get(index).unwrap()
+    }
+
     pub fn slice(&self, start: usize, end: usize) -> Self {
         Self {
             inner: self.inner[start..end].to_vec(),
@@ -38,12 +42,12 @@ impl From<Vec<Object>> for List {
 
 impl Display for List {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut s = self
+        let s = self
             .inner
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
-            .join(",");
+            .join(", ");
         write!(f, "[{}]", s)
     }
 }
