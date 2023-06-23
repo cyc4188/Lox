@@ -109,7 +109,7 @@ impl Scanner {
     }
 
     /// add a token to the tokens vector
-    fn add_token(&mut self, token_type: TokenType, literal: Literal) {
+    fn add_token(&mut self, token_type: TokenType, _literal: Literal) {
         self.tokens.push(self.get_token(token_type));
     }
 

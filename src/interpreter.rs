@@ -349,7 +349,7 @@ impl expr::Visitor<Object> for Interpreter {
                             error_type: ErrorType::RuntimeError(operator.clone()),
                         });
                     }
-                    if s.len() <= end as usize || end < 0 {
+                    if s.len() < end as usize || end < 0 {
                         return Err(Error {
                             message: format!("Index out of range: {}", end),
                             error_type: ErrorType::RuntimeError(operator.clone()),
