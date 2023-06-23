@@ -95,6 +95,7 @@ impl Interpreter {
             Object::Callable(function) => function.to_string(),
             Object::Class(class) => class.borrow().to_string(),
             Object::Instance(instance) => instance.borrow().to_string(),
+            Object::List(list) => list.borrow().to_string(),
         }
     }
     fn check_integer(obj: &Object) -> Option<i64> {
@@ -530,6 +531,18 @@ impl expr::Visitor<Object> for Interpreter {
                 } else {
                     unreachable!()
                 }
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn visit_list_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::List { elements, .. } => {
+                let mut list = List::new();
+                for element in elements {
+                    list.push(self.evaluate(element)?);
+                }
+                Ok(Object::List(Rc::new(RefCell::new(list))))
             }
             _ => unreachable!(),
         }

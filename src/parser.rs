@@ -58,12 +58,13 @@ macro_rules! matches {
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
 ///                | call_index ;
-/// call_index     → index ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
+/// call_index     → call ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
 ///                | IDENTIFIER
 ///                | this
-///                | super "." primary ;
+///                | super "." primary
+///                | list "(" arguments? ")" ;
 /// arguments      | expression ( "," expression )* ;
 /// parameters     | IDENTIFIER ( "," IDENTIFIER )* ;
 impl<'a> Parser<'a> {
@@ -579,6 +580,14 @@ impl<'a> Parser<'a> {
                 .clone();
             return Ok(Expr::Super { keyword, method });
         }
+
+        if matches!(self, List) {
+            // leftparen
+            let keyword = self.previous().clone();
+            self.consume(LeftParen, "Expect '(' after 'list'.")?;
+            return self.finish_list(keyword);
+        }
+
         Err(self.error(self.peak(), "Expect expression."))
         // Err(Error {
         //     message: "Expect expression".to_string(),
@@ -691,5 +700,22 @@ impl<'a> Parser<'a> {
             paren: self.previous().clone(),
             arguments,
         })
+    }
+
+    fn finish_list(&mut self, keyword: Token) -> Result<Expr, Error> {
+        let mut elements: Vec<Expr> = Vec::new();
+        if !self.check(RightParen) {
+            loop {
+                if elements.len() >= 255 {
+                    return Err(self.error(self.peak(), "Can't have more than 255 elements."));
+                }
+                elements.push(self.expression()?);
+                if !matches!(self, Comma) {
+                    break;
+                }
+            }
+        }
+        self.consume(RightParen, "Expect ')' after elements.")?;
+        Ok(Expr::List { keyword, elements })
     }
 }

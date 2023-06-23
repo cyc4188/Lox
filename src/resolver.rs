@@ -305,6 +305,17 @@ impl<'a> expr::Visitor<()> for Resolver<'a> {
             _ => unreachable!(),
         }
     }
+    fn visit_list_expr(&mut self, expr: &Expr) -> Result<(), Error> {
+        match expr {
+            Expr::List { elements, .. } => {
+                for element in elements {
+                    self.resolve_expr(element)?;
+                }
+                Ok(())
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a> stmt::Visitor<()> for Resolver<'a> {

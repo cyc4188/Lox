@@ -5,12 +5,14 @@ use std::rc::Rc;
 use crate::Error;
 use crate::ErrorType;
 use crate::Function;
+use crate::List;
 use crate::LoxClass;
 use crate::LoxInstance;
 use crate::Token;
 use crate::TokenType;
 type ClassRef = Rc<RefCell<LoxClass>>;
 type InstanceRef = Rc<RefCell<LoxInstance>>;
+type ListRef = Rc<RefCell<List>>;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -20,6 +22,7 @@ pub enum Object {
     Callable(Function),
     Class(ClassRef),
     Instance(InstanceRef),
+    List(ListRef),
     Nil,
 }
 
@@ -33,6 +36,7 @@ impl Display for Object {
             Object::Callable(_) => write!(f, "<callable>"),
             Object::Class(c) => write!(f, "{}", c.borrow()),
             Object::Instance(i) => write!(f, "{}", i.borrow()),
+            Object::List(l) => write!(f, "{}", l.borrow()),
         }
     }
 }

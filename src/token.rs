@@ -70,6 +70,7 @@ impl Token {
             "true" => Some(TokenType::True),
             "var" => Some(TokenType::Var),
             "while" => Some(TokenType::While),
+            "list" => Some(TokenType::List),
             _ => None,
         }
     }
@@ -132,6 +133,7 @@ pub enum TokenType {
     True,
     Var,
     While,
+    List,
 
     Eof,
 }

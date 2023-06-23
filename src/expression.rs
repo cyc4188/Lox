@@ -18,6 +18,7 @@ pub mod expr {
         fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_this_expr(&mut self, expr: &Expr) -> Result<T, Error>;
         fn visit_super_expr(&mut self, expr: &Expr) -> Result<T, Error>;
+        fn visit_list_expr(&mut self, expr: &Expr) -> Result<T, Error>;
     }
 }
 
@@ -96,6 +97,10 @@ pub enum Expr {
         keyword: Token,
         method: Token,
     },
+    List {
+        keyword: Token,
+        elements: Vec<Expr>,
+    },
 }
 
 impl Expr {
@@ -137,6 +142,7 @@ impl Expr {
             Expr::IndexSet { .. } => visitor.visit_index_set_expr(self),
             Expr::This { keyword } => visitor.visit_this_expr(self),
             Expr::Super { keyword, method } => visitor.visit_super_expr(self),
+            Expr::List { keyword, elements } => visitor.visit_list_expr(self),
         }
     }
 }
@@ -193,6 +199,9 @@ impl fmt::Display for Expr {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
             Expr::Super { keyword, method } => {
+                write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
+            }
+            Expr::List { keyword, elements } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }
         }
@@ -381,6 +390,18 @@ impl expr::Visitor<String> for AstPrinter {
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<String, Error> {
         match expr {
             Expr::Super { .. } => Ok("super ".to_string()),
+            _ => unreachable!(),
+        }
+    }
+    fn visit_list_expr(&mut self, expr: &Expr) -> Result<String, Error> {
+        match expr {
+            Expr::List { elements, .. } => {
+                let elements = elements
+                    .iter()
+                    .map(|e| e.accept(self))
+                    .collect::<Result<Vec<String>, Error>>()?;
+                Ok(format!("[{}]", elements.join(",")))
+            }
             _ => unreachable!(),
         }
     }
