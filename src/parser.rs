@@ -658,11 +658,17 @@ impl<'a> Parser<'a> {
 
     fn finish_index(&mut self, expr: Expr) -> Result<Expr, Error> {
         let index = self.expression()?;
+        let index_end: Option<Box<Expr>> = if matches!(self, Colon) {
+            Some(Box::new(self.expression()?))
+        } else {
+            None
+        };
         self.consume(RightBracket, "Expect ']' after index.")?;
         Ok(Expr::Index {
             left: Box::new(expr),
             operator: self.previous().clone(),
             index: Box::new(index),
+            index_end,
         })
     }
 

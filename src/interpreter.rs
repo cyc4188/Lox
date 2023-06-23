@@ -97,6 +97,13 @@ impl Interpreter {
             Object::Instance(instance) => instance.borrow().to_string(),
         }
     }
+    fn check_integer(obj: &Object) -> Option<i64> {
+        if let Object::Number(NumberType::Integer(n)) = obj {
+            Some(*n)
+        } else {
+            None
+        }
+    }
 
     pub fn resolve(&mut self, token: &Token, depth: usize) {
         trace!("Resolving {} at depth {}", token.lexeme, depth);
@@ -301,40 +308,65 @@ impl expr::Visitor<Object> for Interpreter {
                 left,
                 operator,
                 index,
+                index_end,
             } => {
                 // evaluate left
                 let left = self.evaluate(left)?;
-                let right = self.evaluate(index)?;
-                let nth: i64;
+                let index = self.evaluate(index)?;
+                let index_end = match index_end {
+                    Some(index_end) => Some(self.evaluate(index_end)?),
+                    None => None,
+                };
+                let start: i64;
                 // check if right is a Number
-                if let Object::Number(n) = right {
-                    if let NumberType::Integer(i) = n {
-                        nth = i;
+                if let Some(n) = Interpreter::check_integer(&index) {
+                    start = n;
+                } else {
+                    return Err(Error {
+                        message: format!("Expected integer got {}", index),
+                        error_type: ErrorType::RuntimeError(operator.clone()),
+                    });
+                }
+
+                let mut end: i64 = start + 1;
+                if let Some(index_end) = index_end {
+                    if let Some(n) = Interpreter::check_integer(&index_end) {
+                        end = n;
                     } else {
                         return Err(Error {
-                            message: format!("Expected integer got {}", n),
+                            message: format!("Expected integer got {}", index_end),
                             error_type: ErrorType::RuntimeError(operator.clone()),
                         });
                     }
-                } else {
-                    return Err(Error {
-                        message: format!("Expected integer got {}", right),
-                        error_type: ErrorType::RuntimeError(operator.clone()),
-                    });
                 }
 
                 // check if left is a String
                 if let Object::String(s) = left {
                     // check if nth is in range
-                    if s.len() <= nth as usize || nth < 0 {
+                    if s.len() <= start as usize || start < 0 {
                         return Err(Error {
-                            message: format!("Index out of range: {}", nth),
+                            message: format!("Index out of range: {}", start),
                             error_type: ErrorType::RuntimeError(operator.clone()),
                         });
                     }
-                    // return the nth character
+                    if s.len() <= end as usize || end < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", end),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+
+                    // 空串
+                    if start >= end {
+                        return Ok(Object::String("".to_string()));
+                    }
+
+                    // return the substr
                     return Ok(Object::String(
-                        s.chars().nth(nth as usize).unwrap().to_string(),
+                        s.chars()
+                            .skip(start as usize)
+                            .take((end - start) as usize)
+                            .collect(),
                     ));
                 }
                 Err(Error {

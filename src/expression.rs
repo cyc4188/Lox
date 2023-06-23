@@ -66,6 +66,7 @@ pub enum Expr {
         left: Box<Expr>,
         operator: Token,
         index: Box<Expr>,
+        index_end: Option<Box<Expr>>,
     },
     Call {
         callee: Box<Expr>,
@@ -113,6 +114,7 @@ impl Expr {
                 left,
                 operator,
                 index: right,
+                index_end,
             } => visitor.visit_index_expr(self),
             Expr::Call {
                 callee,
@@ -154,6 +156,7 @@ impl fmt::Display for Expr {
                 left,
                 operator,
                 index: right,
+                index_end,
             } => {
                 write!(f, "{}", self.accept(&mut AstPrinter).unwrap())
             }

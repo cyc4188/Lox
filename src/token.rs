@@ -33,6 +33,7 @@ impl Token {
             '-' => Some(TokenType::Minus),
             '+' => Some(TokenType::Plus),
             ';' => Some(TokenType::Semicolon),
+            ':' => Some(TokenType::Colon),
             '*' => Some(TokenType::Star),
             _ => None,
         }
@@ -94,7 +95,8 @@ pub enum TokenType {
     Dot,
     Minus,
     Plus,
-    Semicolon,
+    Semicolon, // 分号
+    Colon,     // 冒号
     Slash,
     Star,
 
