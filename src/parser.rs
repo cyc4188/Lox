@@ -32,9 +32,9 @@ macro_rules! matches {
 /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 /// classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
 /// statement      → exprStmt
-///                | ifStmt 
-///                | printStmt 
-///                | block 
+///                | ifStmt
+///                | printStmt
+///                | block
 ///                | whileStmt
 ///                | forStmt
 ///                | returnStmt ;
@@ -45,7 +45,7 @@ macro_rules! matches {
 /// whileStmt      | "while" "(" expression ")" statement ;
 /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
 ///                         expression? ";"
-///                         expression? ")" statement ; 
+///                         expression? ")" statement ;
 /// returnStmt     | "return" expression? ";" ;
 /// expression     → assignment ;
 /// assignment     → ( call "." )? IDENTIFIER "=" assignment
@@ -57,13 +57,14 @@ macro_rules! matches {
 /// term           → factor ( ( "-" | "+" ) factor )* ;
 /// factor         → unary ( ( "/" | "*" ) unary )* ;
 /// unary          → ( "!" | "-" ) unary
-///                | call ;
-/// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+///                | call_index ;
+/// call_index     → call ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
 /// primary        → NUMBER | STRING | "true" | "false" | "nil"
 ///                | "(" expression ")"
-///                | IDENTIFIER 
+///                | IDENTIFIER
 ///                | this
-///                | super "." primary ;
+///                | super "." primary
+///                | list "(" arguments? ")" ;
 /// arguments      | expression ( "," expression )* ;
 /// parameters     | IDENTIFIER ( "," IDENTIFIER )* ;
 impl<'a> Parser<'a> {
@@ -91,8 +92,7 @@ impl<'a> Parser<'a> {
             self.function("function")
         } else if matches!(self, Class) {
             self.class_decl()
-        }
-        else {
+        } else {
             self.statement()
         };
 
@@ -110,7 +110,9 @@ impl<'a> Parser<'a> {
 
         if matches!(self, Less) {
             self.consume(Identifier, "Expect superclass name.")?;
-            super_class = Some(Expr::Variable{ name: self.previous().clone() });
+            super_class = Some(Expr::Variable {
+                name: self.previous().clone(),
+            });
         }
 
         self.consume(LeftBrace, "Expect '{' before class body.")?;
@@ -122,7 +124,11 @@ impl<'a> Parser<'a> {
         }
         self.consume(RightBrace, "Expect '}' after class body.")?;
 
-        Ok(Stmt::ClassStmt { name, super_class, methods })
+        Ok(Stmt::ClassStmt {
+            name,
+            super_class,
+            methods,
+        })
     }
 
     /// varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -156,12 +162,19 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
-        } 
+        }
         self.consume(RightParen, "Expect ')' after parameters.")?;
-        self.consume(LeftBrace, format!("Expect '{{' before {} body.", kind).as_str())?;
+        self.consume(
+            LeftBrace,
+            format!("Expect '{{' before {} body.", kind).as_str(),
+        )?;
         let body = self.block_statement()?;
 
-        Ok(Stmt::FunStmt { name, params: parameters, body })
+        Ok(Stmt::FunStmt {
+            name,
+            params: parameters,
+            body,
+        })
     }
 
     /// statement      → exprStmt
@@ -177,7 +190,9 @@ impl<'a> Parser<'a> {
 
         // block
         if matches!(self, LeftBrace) {
-            return Ok(Stmt::BlockStmt { statements: self.block_statement()? });
+            return Ok(Stmt::BlockStmt {
+                statements: self.block_statement()?,
+            });
         }
 
         // ifStmt
@@ -194,7 +209,7 @@ impl<'a> Parser<'a> {
         if matches!(self, For) {
             return self.for_statement();
         }
-        
+
         // returnStmt
         if matches!(self, Return) {
             return self.return_statement();
@@ -264,7 +279,7 @@ impl<'a> Parser<'a> {
 
     /// forStmt        | "for" "(" ( varDecl | exprStmt | ";" )
     ///                         expression? ";"
-    ///                         expression? ")" statement ; 
+    ///                         expression? ")" statement ;
     fn for_statement(&mut self) -> Result<Stmt, Error> {
         // 语法脱糖, convert to while loop
         self.consume(LeftParen, "Expect '(' after 'for'.")?;
@@ -278,7 +293,9 @@ impl<'a> Parser<'a> {
         };
 
         let condition: Expr = if self.check(Semicolon) {
-            Expr::Literal { value: Literal::Boolean(true) }
+            Expr::Literal {
+                value: Literal::Boolean(true),
+            }
         } else {
             self.expression()?
         };
@@ -290,21 +307,33 @@ impl<'a> Parser<'a> {
             Some(self.expression()?)
         };
         self.consume(RightParen, "Expect ')' after for clauses.")?;
-        
+
         let mut body = self.statement()?;
 
-        if let Some(increment) =increment  {
-            body = Stmt::BlockStmt { statements: vec![body, Stmt::ExprStmt { expression: increment }] };
+        if let Some(increment) = increment {
+            body = Stmt::BlockStmt {
+                statements: vec![
+                    body,
+                    Stmt::ExprStmt {
+                        expression: increment,
+                    },
+                ],
+            };
         }
 
-        body = Stmt::WhileStmt { condition, body: Box::new(body) };
+        body = Stmt::WhileStmt {
+            condition,
+            body: Box::new(body),
+        };
 
         if let Some(initializer) = initializer {
-            body = Stmt::BlockStmt { statements: vec![initializer, body] };
+            body = Stmt::BlockStmt {
+                statements: vec![initializer, body],
+            };
         }
 
         Ok(body)
-    }   
+    }
 
     fn return_statement(&mut self) -> Result<Stmt, Error> {
         let keyword = self.previous().clone();
@@ -343,7 +372,21 @@ impl<'a> Parser<'a> {
                     object,
                     name,
                     value: Box::new(value),
-                });  
+                });
+            } else if let Ok(Expr::Index {
+                object,
+                index,
+                index_end,
+                operator,
+            }) = expr
+            {
+                return Ok(Expr::IndexSet {
+                    object,
+                    index,
+                    index_end,
+                    value: Box::new(value),
+                    operator,
+                });
             }
             return Err(self.error(self.previous(), "Invalid assignment target."));
         }
@@ -362,7 +405,7 @@ impl<'a> Parser<'a> {
                 operator,
                 right: Box::new(right),
             };
-        };
+        }
         Ok(expr)
     }
 
@@ -377,7 +420,7 @@ impl<'a> Parser<'a> {
                 operator,
                 right: Box::new(right),
             };
-        };
+        }
         Ok(expr)
     }
 
@@ -447,7 +490,7 @@ impl<'a> Parser<'a> {
     }
 
     /// unary          → ( "!" | "-" ) unary
-    ///                | call ;
+    ///                | call_index ;
     fn unary(&mut self) -> Result<Expr, Error> {
         if matches!(self, Bang, Minus) {
             let operator = self.previous().clone();
@@ -457,22 +500,23 @@ impl<'a> Parser<'a> {
                 right: Box::new(right),
             });
         }
-        self.call()
+        self.call_index()
     }
-
-
-    /// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
-    fn call(&mut self) -> Result<Expr, Error> {
+    /// call_index           → primary ( "(" arguments? ")" | "." IDENTIFIER | "[" index "]")* ;
+    fn call_index(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
-        while matches!(self, LeftParen, Dot) {
-            if self.previous().token_type == LeftParen {
+        while matches!(self, LeftParen, Dot, LeftBracket) {
+            let previous_token_type = self.previous().token_type.clone();
+            if previous_token_type == LeftParen {
                 expr = self.finish_call(expr)?;
-            } else {
+            } else if previous_token_type == Dot {
                 let name = self.consume(Identifier, "Expect property name after '.'.")?;
                 expr = Expr::Get {
                     object: Box::new(expr),
                     name: name.clone(),
                 };
+            } else if previous_token_type == LeftBracket {
+                expr = self.finish_index(expr)?;
             }
         }
         Ok(expr)
@@ -480,7 +524,7 @@ impl<'a> Parser<'a> {
 
     /// primary        → NUMBER | STRING | "true" | "false" | "nil"
     ///                | "(" expression ")"
-    ///                | IDENTIFIER 
+    ///                | IDENTIFIER
     ///                | this ;
     fn primary(&mut self) -> Result<Expr, Error> {
         if matches!(self, False) {
@@ -503,13 +547,21 @@ impl<'a> Parser<'a> {
         if matches!(self, String) {
             return Ok(Expr::Literal {
                 // value: Literal::String(self.previous().lexeme.clone())
-                value: Literal::String(self.previous().lexeme[1..self.previous().lexeme.len()-1].to_string())
+                value: Literal::String(
+                    self.previous().lexeme[1..self.previous().lexeme.len() - 1].to_string(),
+                ),
             });
         }
         if matches!(self, Number) {
             return Ok(Expr::Literal {
-                value: Literal::Number(self.previous().lexeme.parse::<f64>().unwrap())
-            })
+                value: Literal::Number(if let Ok(number) = self.previous().lexeme.parse::<i64>() {
+                    NumberType::Integer(number)
+                } else if let Ok(number) = self.previous().lexeme.parse::<f64>() {
+                    NumberType::Float(number)
+                } else {
+                    return Err(self.error(self.previous(), "Invalid number."));
+                }),
+            });
         }
 
         if matches!(self, Identifier) {
@@ -529,19 +581,27 @@ impl<'a> Parser<'a> {
         }
 
         if matches!(self, This) {
-            return Ok(
-                Expr::This { keyword: self.previous().clone() }
-            );
+            return Ok(Expr::This {
+                keyword: self.previous().clone(),
+            });
         }
 
         if matches!(self, Super) {
             let keyword = self.previous().clone();
             self.consume(Dot, "Expect '.' after 'super'.")?;
-            let method = self.consume(Identifier, "Expect superclass method name.")?.clone();
-            return Ok(
-                Expr::Super { keyword , method }
-            )
+            let method = self
+                .consume(Identifier, "Expect superclass method name.")?
+                .clone();
+            return Ok(Expr::Super { keyword, method });
         }
+
+        if matches!(self, List) {
+            // leftparen
+            let keyword = self.previous().clone();
+            self.consume(LeftParen, "Expect '(' after 'list'.")?;
+            return self.finish_list(keyword);
+        }
+
         Err(self.error(self.peak(), "Expect expression."))
         // Err(Error {
         //     message: "Expect expression".to_string(),
@@ -586,9 +646,7 @@ impl<'a> Parser<'a> {
         if self.check(token_type) {
             return Ok(self.advance());
         }
-        Err(
-            self.error(self.peak(), message)
-        )
+        Err(self.error(self.peak(), message))
         // Err(Error {
         //     message: message.to_string(),
         //     error_type: ErrorType::SyntaxError,
@@ -621,6 +679,22 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn finish_index(&mut self, expr: Expr) -> Result<Expr, Error> {
+        let index = self.expression()?;
+        let index_end: Option<Box<Expr>> = if matches!(self, Colon) {
+            Some(Box::new(self.expression()?))
+        } else {
+            None
+        };
+        self.consume(RightBracket, "Expect ']' after index.")?;
+        Ok(Expr::Index {
+            object: Box::new(expr),
+            operator: self.previous().clone(),
+            index: Box::new(index),
+            index_end,
+        })
+    }
+
     fn finish_call(&mut self, expr: Expr) -> Result<Expr, Error> {
         let mut arguments: Vec<Expr> = Vec::new();
         if !self.check(RightParen) {
@@ -640,5 +714,22 @@ impl<'a> Parser<'a> {
             paren: self.previous().clone(),
             arguments,
         })
+    }
+
+    fn finish_list(&mut self, keyword: Token) -> Result<Expr, Error> {
+        let mut elements: Vec<Expr> = Vec::new();
+        if !self.check(RightParen) {
+            loop {
+                if elements.len() >= 255 {
+                    return Err(self.error(self.peak(), "Can't have more than 255 elements."));
+                }
+                elements.push(self.expression()?);
+                if !matches!(self, Comma) {
+                    break;
+                }
+            }
+        }
+        self.consume(RightParen, "Expect ')' after elements.")?;
+        Ok(Expr::List { keyword, elements })
     }
 }

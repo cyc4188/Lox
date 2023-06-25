@@ -17,15 +17,15 @@ impl Interpreter {
             name: "clock".to_string(),
             arity: 0,
             body: Box::new(|_: &Vec<Object>| -> Object {
-                Object::Number(
+                Object::Number(NumberType::Float(
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
                         .as_secs_f64(),
-                )
+                ))
             }),
         });
-        globals.borrow_mut().define(&"clock".to_string(), clock);
+        globals.borrow_mut().define("clock", clock);
 
         Self {
             environment: globals.clone(),
@@ -95,6 +95,14 @@ impl Interpreter {
             Object::Callable(function) => function.to_string(),
             Object::Class(class) => class.borrow().to_string(),
             Object::Instance(instance) => instance.borrow().to_string(),
+            Object::List(list) => list.borrow().to_string(),
+        }
+    }
+    fn check_integer(obj: &Object) -> Option<i64> {
+        if let Object::Number(NumberType::Integer(n)) = obj {
+            Some(*n)
+        } else {
+            None
         }
     }
 
@@ -124,7 +132,7 @@ impl expr::Visitor<Object> for Interpreter {
         match value {
             Literal::Boolean(b) => Ok(Object::Boolean(*b)),
             Literal::Nil => Ok(Object::Nil),
-            Literal::Number(n) => Ok(Object::Number(*n)),
+            Literal::Number(n) => Ok(Object::Number(*n)), // TODO
             Literal::String(s) => Ok(Object::String(s.clone())),
         }
     }
@@ -138,7 +146,7 @@ impl expr::Visitor<Object> for Interpreter {
                     TokenType::Minus => {
                         match right {
                             // check if right is a number
-                            Object::Number(n) => Ok(Object::Number(-n)),
+                            Object::Number(n) => Ok(Object::Number(n.unary_op(operator)?)),
                             _ => self.number_operand_error(operator),
                         }
                     }
@@ -160,12 +168,24 @@ impl expr::Visitor<Object> for Interpreter {
                 let right = self.evaluate(right)?;
                 match operator.token_type {
                     TokenType::Minus => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l - r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Plus => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l + r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::String(l + &r)),
+                        (Object::List(list), Object::List(r)) => Ok(Object::List(Rc::new(
+                            RefCell::new(list.borrow().add(&r.borrow())),
+                        ))),
+                        (Object::List(list), obj) => {
+                            let mut new_list = list.borrow().clone();
+                            new_list.push(obj);
+                            Ok(Object::List(Rc::new(RefCell::new(new_list))))
+                        }
                         _ => Err(Error {
                             message: format!(
                                 "Operands of {} must be two numbers or two strings.",
@@ -175,30 +195,40 @@ impl expr::Visitor<Object> for Interpreter {
                         }),
                     },
                     TokenType::Slash => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l / r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Star => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Number(l * r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Number(l.binary_op(operator, &r)?))
+                        }
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Greater => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l > r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.greater(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l > r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::GreaterEqual => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l >= r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.greater_equal(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l >= r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::Less => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l < r)),
+                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l.less(&r)?)),
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l < r)),
                         _ => self.number_operand_error(operator),
                     },
                     TokenType::LessEqual => match (left, right) {
-                        (Object::Number(l), Object::Number(r)) => Ok(Object::Boolean(l <= r)),
+                        (Object::Number(l), Object::Number(r)) => {
+                            Ok(Object::Boolean(l.less_equal(&r)?))
+                        }
                         (Object::String(l), Object::String(r)) => Ok(Object::Boolean(l <= r)),
                         _ => self.number_operand_error(operator),
                     },
@@ -280,7 +310,117 @@ impl expr::Visitor<Object> for Interpreter {
             _ => unreachable!(),
         }
     }
+    fn visit_index_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        trace!("visit_index_expr: {}", expr);
+        match expr {
+            Expr::Index {
+                object: left,
+                operator,
+                index,
+                index_end,
+            } => {
+                // evaluate left
+                let left = self.evaluate(left)?;
+                let index = self.evaluate(index)?;
+                let index_end = match index_end {
+                    Some(index_end) => Some(self.evaluate(index_end)?),
+                    None => None,
+                };
+                let start: i64;
+                // check if right is a Number
+                if let Some(n) = Interpreter::check_integer(&index) {
+                    start = n;
+                } else {
+                    return Err(Error {
+                        message: format!("Expected integer got {}", index),
+                        error_type: ErrorType::RuntimeError(operator.clone()),
+                    });
+                }
 
+                let mut end: i64 = start + 1;
+                let mut is_slice: bool = false;
+                if let Some(index_end) = index_end {
+                    is_slice = true;
+                    if let Some(n) = Interpreter::check_integer(&index_end) {
+                        end = n;
+                    } else {
+                        return Err(Error {
+                            message: format!("Expected integer got {}", index_end),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                }
+
+                // check if left is a String
+                if let Object::String(s) = left {
+                    // check if nth is in range
+                    if s.len() <= start as usize || start < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", start),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                    if s.len() < end as usize || end < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", end),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+
+                    // 空串
+                    if start >= end {
+                        return Ok(Object::String("".to_string()));
+                    }
+
+                    // return the substr
+                    return Ok(Object::String(
+                        s.chars()
+                            .skip(start as usize)
+                            .take((end - start) as usize)
+                            .collect(),
+                    ));
+                }
+                // check if left is a List
+                if let Object::List(list) = left {
+                    // check if nth is in range
+                    if list.borrow().inner.len() <= start as usize || start < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", start),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+                    if list.borrow().inner.len() < end as usize || end < 0 {
+                        return Err(Error {
+                            message: format!("Index out of range: {}", end),
+                            error_type: ErrorType::RuntimeError(operator.clone()),
+                        });
+                    }
+
+                    // 空列表
+                    if start >= end {
+                        return Ok(Object::List(Rc::new(RefCell::new(List::new()))));
+                    }
+
+                    if !is_slice {
+                        // return the nth element
+                        return Ok(list.borrow().get(start as usize).clone());
+                    }
+
+                    // return the sublist
+                    return Ok(Object::List(Rc::new(RefCell::new(
+                        list.borrow().slice(start as usize, end as usize),
+                    ))));
+                }
+
+                Err(Error {
+                    message: format!("Expected string got {}", left),
+                    error_type: ErrorType::RuntimeError(operator.clone()),
+                })
+                // check if left if an Array TOOD
+            }
+            _ => unreachable!(),
+        }
+    }
     fn visit_call_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         trace!("visit_call_expr");
         match expr {
@@ -316,9 +456,8 @@ impl expr::Visitor<Object> for Interpreter {
                 } else if let Object::Class(class) = callee {
                     // call class init
                     // get a new instance of the class
-                    let instance = Object::Instance(Rc::new(RefCell::new(LoxInstance::new(
-                        class.clone(),
-                    ))));
+                    let instance =
+                        Object::Instance(Rc::new(RefCell::new(LoxInstance::new(class.clone()))));
                     if let Some(initializer) = class.borrow().get_method("init") {
                         if initializer.arity() != args.len() {
                             return Err(Error {
@@ -356,44 +495,135 @@ impl expr::Visitor<Object> for Interpreter {
                         Err(Error {
                             message: format!("Undefined property '{}'.", name.lexeme),
                             error_type: ErrorType::RuntimeError(name.clone()),
-                        }) 
+                        })
                     }
                 } else {
                     Err(Error {
                         message: "Only instances have properties.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
-                } 
+                }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
     fn visit_set_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::Set { object, name, value } => {
+            Expr::Set {
+                object,
+                name,
+                value,
+            } => {
                 // object.name = value
                 let object = object.accept(self)?;
                 if let Object::Instance(instance) = object {
-                    let value = self.evaluate(value)?; 
+                    let value = self.evaluate(value)?;
                     instance.borrow_mut().set(&name.lexeme, &value);
                     Ok(value)
-                }
-                else {
+                } else {
                     Err(Error {
                         message: "Only instances have fields.".to_string(),
                         error_type: ErrorType::RuntimeError(name.clone()),
                     })
                 }
             }
-            _ => unreachable!()
+            _ => unreachable!(),
+        }
+    }
+    fn visit_index_set_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::IndexSet {
+                object,
+                index,
+                index_end,
+                value,
+                operator,
+            } => {
+                let object = self.evaluate(object)?;
+                match object {
+                    Object::List(list) => {
+                        let index = self.evaluate(index)?;
+                        let index_end = match index_end {
+                            Some(index_end) => Some(self.evaluate(index_end)?),
+                            None => None,
+                        };
+                        let start: i64;
+                        // check if right is a Number
+                        if let Some(n) = Interpreter::check_integer(&index) {
+                            start = n;
+                        } else {
+                            return Err(Error {
+                                message: format!("Expected integer got {}", index),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+
+                        let mut end: i64 = start + 1;
+                        let mut is_slice: bool = false;
+                        if let Some(index_end) = index_end {
+                            is_slice = true;
+                            if let Some(n) = Interpreter::check_integer(&index_end) {
+                                end = n;
+                            } else {
+                                return Err(Error {
+                                    message: format!("Expected integer got {}", index_end),
+                                    error_type: ErrorType::RuntimeError(operator.clone()),
+                                });
+                            }
+                        }
+
+                        // check if nth is in range
+                        if list.borrow().inner.len() <= start as usize || start < 0 {
+                            return Err(Error {
+                                message: format!("Index out of range: {}", start),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+                        if list.borrow().inner.len() < end as usize || end < 0 {
+                            return Err(Error {
+                                message: format!("Index out of range: {}", end),
+                                error_type: ErrorType::RuntimeError(operator.clone()),
+                            });
+                        }
+
+                        let value = self.evaluate(value)?;
+                        if !is_slice {
+                            // return the nth element
+                            list.borrow_mut().inner[start as usize] = value.clone();
+                            return Ok(value);
+                        }
+
+                        // 修改一个连续区间
+                        if let Object::List(other) = value.clone() {
+                            list.borrow_mut().slice_change(
+                                start as usize,
+                                end as usize,
+                                &other.borrow(),
+                            );
+                            return Ok(value);
+                        } else {
+                            list.borrow_mut().slice_change_obj(
+                                start as usize,
+                                end as usize,
+                                value.clone(),
+                            );
+                        }
+
+                        Ok(value)
+                    }
+                    _ => Err(Error {
+                        message: format!("Expected list got {}", object),
+                        error_type: ErrorType::RuntimeError(operator.clone()),
+                    }),
+                }
+            }
+            _ => unreachable!(),
         }
     }
     fn visit_this_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
         match expr {
-            Expr::This { keyword } => {
-                Ok(self.look_up_variable(keyword)?)
-            }
-            _ => unreachable!()
+            Expr::This { keyword } => Ok(self.look_up_variable(keyword)?),
+            _ => unreachable!(),
         }
     }
     fn visit_super_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
@@ -401,25 +631,38 @@ impl expr::Visitor<Object> for Interpreter {
             Expr::Super { keyword, method } => {
                 let distance = self.locals.get(keyword);
                 let super_class = self.look_up_variable(keyword)?;
-                let object = self.environment.borrow().get_at(*distance.unwrap() - 1, &"this".to_string()).unwrap();
+                let object = self
+                    .environment
+                    .borrow()
+                    .get_at(*distance.unwrap() - 1, "this")
+                    .unwrap();
 
                 if let Object::Class(super_class) = super_class {
                     if let Some(method) = super_class.borrow().get_method(&method.lexeme) {
                         Ok(Object::Callable(method.bind(object)))
-                    }
-                    else {
+                    } else {
                         Err(Error {
                             message: format!("Undefined property '{}'.", method.lexeme),
                             error_type: ErrorType::RuntimeError(method.clone()),
                         })
                     }
-                }
-                else {
+                } else {
                     unreachable!()
                 }
-
             }
-            _ => unreachable!()
+            _ => unreachable!(),
+        }
+    }
+    fn visit_list_expr(&mut self, expr: &Expr) -> Result<Object, Error> {
+        match expr {
+            Expr::List { elements, .. } => {
+                let mut list = List::new();
+                for element in elements {
+                    list.push(self.evaluate(element)?);
+                }
+                Ok(Object::List(Rc::new(RefCell::new(list))))
+            }
+            _ => unreachable!(),
         }
     }
 }
@@ -541,7 +784,11 @@ impl stmt::Visitor<()> for Interpreter {
     }
     fn visit_class_stmt(&mut self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
-            Stmt::ClassStmt { name, methods, super_class } => {
+            Stmt::ClassStmt {
+                name,
+                methods,
+                super_class,
+            } => {
                 let mut super_class_ref: Option<ClassRef> = None;
                 if let Some(super_class) = super_class {
                     let super_class_obj = self.evaluate(super_class)?;
@@ -552,28 +799,30 @@ impl stmt::Visitor<()> for Interpreter {
                             message: "Superclass must be a class.".to_string(),
                             error_type: ErrorType::RuntimeError(name.clone()),
                         });
-                    } 
+                    }
                 }
 
-                super_class_ref.as_ref().and_then(|super_class| -> Option<_> {
+                super_class_ref.as_ref().map(|super_class| -> Option<_> {
                     let sub_env = Rc::new(RefCell::new(Environment::new(Some(
                         self.environment.clone(),
                     ))));
-                    self.environment = sub_env.clone();
+                    self.environment = sub_env;
 
-                    self.environment.borrow_mut().define(&"super".to_string(), Object::Class(super_class.clone()));
+                    self.environment
+                        .borrow_mut()
+                        .define("super", Object::Class(super_class.clone()));
                     Some(())
                 });
                 let mut class_methods = HashMap::new();
                 for method in methods {
                     match method {
                         Stmt::FunStmt { name, params, body } => {
-                            let function = Function::UserDefined { 
-                                name: name.clone(), 
-                                params: params.clone(), 
-                                body: body.clone(), 
+                            let function = Function::UserDefined {
+                                name: name.clone(),
+                                params: params.clone(),
+                                body: body.clone(),
                                 closure: self.environment.clone(),
-                                is_initializer: name.lexeme=="init",
+                                is_initializer: name.lexeme == "init",
                             };
 
                             class_methods.insert(name.lexeme.clone(), function);
@@ -582,15 +831,23 @@ impl stmt::Visitor<()> for Interpreter {
                     }
                 }
 
-                super_class_ref.as_ref().and_then(|_| -> Option<_> {
-                    let previous = self.environment.borrow().enclosing.as_ref().unwrap().clone();
+                super_class_ref.as_ref().map(|_| -> Option<_> {
+                    let previous = self
+                        .environment
+                        .borrow()
+                        .enclosing
+                        .as_ref()
+                        .unwrap()
+                        .clone();
                     self.environment = previous;
                     Some(())
                 });
 
-                let class_inner = Rc::new(RefCell::new(
-                    LoxClass::new(name.lexeme.clone(), class_methods, super_class_ref)
-                ));
+                let class_inner = Rc::new(RefCell::new(LoxClass::new(
+                    name.lexeme.clone(),
+                    class_methods,
+                    super_class_ref,
+                )));
 
                 let class = Object::Class(class_inner);
                 self.environment.borrow_mut().define(&name.lexeme, class);

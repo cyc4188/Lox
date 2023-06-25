@@ -1,0 +1,2 @@
+var str = "compiler lab";
+print str[0:8]; // expect: compiler

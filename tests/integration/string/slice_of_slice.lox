@@ -1,0 +1,2 @@
+var str = "hello compiler lab";
+print str[6:18][9:12]; // expect: lab

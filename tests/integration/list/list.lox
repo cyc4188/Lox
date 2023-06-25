@@ -1,0 +1,4 @@
+var a = list(1, 2, 3, 4, 5);
+print a; // expect: [1, 2, 3, 4, 5]
+print a[1]; // expect: 2
+print a[1:4]; // expect: [2, 3, 4]
